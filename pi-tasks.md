@@ -72,7 +72,7 @@ Chaque outil prend un `action` et, sauf `task_help`, un objet `params` spécifiq
 
 `task_help` est l’outil de référence obligatoire pour retrouver les règles de workflow, les schémas de `params` par action et des exemples.
 
-Dans Pi, les actions courantes affichent un résumé humain compact (`task_lists.find` avec colonnes alignées, `task_lists.get` avec résumé de statuts et lignes de tâches alignées, `task_claims.claim_next`, `task_items.update`, etc.) tandis que le résultat structuré complet reste disponible dans `details`.
+Dans Pi, les actions courantes affichent un résumé humain compact (`task_lists.find` avec colonnes alignées, `task_lists.get` avec résumé de statuts et lignes de tâches alignées, `task_claims.claim_next`, `task_items.update`, etc.) via un renderer UI. Ce rendu n’altère pas le contenu de résultat envoyé à l’agent : les ids complets et le JSON structuré restent disponibles dans le contenu tool, dans `details`, et côté MCP.
 
 **Workflow Agent Standard**
 

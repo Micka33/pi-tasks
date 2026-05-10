@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import type { TSchema } from "typebox";
 import { compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool, formatCompactToolDisplay } from "../core/compact-tools.js";
 import { PrivateListAccessError, serializeError } from "../core/errors.js";
@@ -75,6 +76,11 @@ export function registerPiTaskTools(pi: ExtensionAPI): void {
       async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
         return executePiTaskTool(tool, params, ctx);
       },
+      renderResult(result, options, _theme, context) {
+        const text = context.lastComponent instanceof Text ? context.lastComponent : new Text("", 0, 0);
+        text.setText(options.expanded ? resultContentText(result.content) : formatCompactToolDisplay(result.details));
+        return text;
+      },
     });
   }
 }
@@ -129,9 +135,16 @@ async function runWithService(
 
 function successResult(result: unknown) {
   return {
-    content: [{ type: "text" as const, text: formatCompactToolDisplay(result) }],
+    content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
     details: result,
   };
+}
+
+function resultContentText(content: Array<{ type: string; text?: string }>): string {
+  return content
+    .filter((item): item is { type: "text"; text: string } => item.type === "text" && typeof item.text === "string")
+    .map((item) => item.text)
+    .join("\n");
 }
 
 export function errorResult(error: unknown) {

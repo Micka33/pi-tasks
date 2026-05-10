@@ -1,3 +1,4 @@
+import { Text } from "@earendil-works/pi-tui";
 import { compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool, formatCompactToolDisplay } from "../core/compact-tools.js";
 import { PrivateListAccessError, serializeError } from "../core/errors.js";
 import { resolvePiAgentId } from "../core/agent-id.js";
@@ -58,6 +59,11 @@ export function registerPiTaskTools(pi) {
             async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
                 return executePiTaskTool(tool, params, ctx);
             },
+            renderResult(result, options, _theme, context) {
+                const text = context.lastComponent instanceof Text ? context.lastComponent : new Text("", 0, 0);
+                text.setText(options.expanded ? resultContentText(result.content) : formatCompactToolDisplay(result.details));
+                return text;
+            },
         });
     }
 }
@@ -101,9 +107,15 @@ async function runWithService(tool, params, ctx, privateBypass) {
 }
 function successResult(result) {
     return {
-        content: [{ type: "text", text: formatCompactToolDisplay(result) }],
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         details: result,
     };
+}
+function resultContentText(content) {
+    return content
+        .filter((item) => item.type === "text" && typeof item.text === "string")
+        .map((item) => item.text)
+        .join("\n");
 }
 export function errorResult(error) {
     const serialized = serializeError(error);
