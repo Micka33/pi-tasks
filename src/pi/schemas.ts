@@ -7,6 +7,11 @@ const Visibility = StringEnum(VISIBILITIES);
 const TaskStatus = StringEnum(TASK_STATUSES);
 
 const OptionalNullableString = Type.Optional(Type.Union([Type.String(), Type.Null()]));
+const TaskUpdateAssignedToAgentId = Type.Optional(
+  Type.Union([Type.String(), Type.Null()], {
+    description: "Set an assignee. When status=blocked, omit to assign the paused task to the current agent; pass null to release it.",
+  }),
+);
 
 export const TaskListCreateParams = Type.Object({
   id: Type.Optional(Type.String({ description: "Optional stable list id. Generated when omitted." })),
@@ -76,7 +81,7 @@ export const TaskUpdateParams = Type.Object({
   description: OptionalNullableString,
   notes: OptionalNullableString,
   status: Type.Optional(TaskStatus),
-  assigned_to_agent_id: OptionalNullableString,
+  assigned_to_agent_id: TaskUpdateAssignedToAgentId,
   result: OptionalNullableString,
 });
 

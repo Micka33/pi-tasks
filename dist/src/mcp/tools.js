@@ -3,7 +3,7 @@ import { PrivateListAccessError, serializeError } from "../core/errors.js";
 import { resolveMcpAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
 import { taskAddManySchema, taskClaimNextSchema, taskClaimRefreshSchema, taskCreateSchema, taskDeleteSchema, taskListCreateSchema, taskListGetSchema, taskListsFindSchema, taskReleaseExpiredClaimsSchema, taskReorderSchema, taskUpdateSchema, } from "./schemas.js";
-const COMMON_DESCRIPTION_SUFFIX = " Private task lists are strictly enforced. Use task_claim_next as the only normal way to enter in_progress; task_update rejects status=in_progress. Use task_claim_refresh for long-running claims.";
+const COMMON_DESCRIPTION_SUFFIX = " Private task lists are strictly enforced. Use task_claim_next as the only normal way to enter in_progress; task_update rejects status=in_progress. Use task_claim_refresh for long-running claims. When pausing with status=blocked, omit assigned_to_agent_id to keep responsibility on the pausing agent; pass assigned_to_agent_id:null to release it.";
 export function registerMcpTaskTools(server) {
     const definitions = [
         {
@@ -60,7 +60,7 @@ export function registerMcpTaskTools(server) {
         {
             name: "task_update",
             title: "Update Task",
-            description: "Update task fields or status. Setting status to in_progress is rejected; use task_claim_next instead." + COMMON_DESCRIPTION_SUFFIX,
+            description: "Update task fields or status. Setting status to in_progress is rejected; use task_claim_next instead. Setting status to blocked keeps assignment on the pausing agent unless assigned_to_agent_id:null is passed." + COMMON_DESCRIPTION_SUFFIX,
             inputSchema: taskUpdateSchema,
             run: (service, params, access) => service.updateTask(params, access),
         },

@@ -20,7 +20,7 @@ Un agent peut être :
 |---|---|
 | `todo` | tâche prête à être exécutée |
 | `in_progress` | tâche réclamée par un agent |
-| `blocked` | tâche bloquée, nécessite une intervention ou information |
+| `blocked` | tâche bloquée ou mise en pause, nécessite une intervention ou information |
 | `done` | tâche terminée |
 | `canceled` | tâche annulée ou devenue inutile |
 
@@ -81,6 +81,8 @@ Un agent peut être :
 4. Il appelle `task_claim_next` avec son `agent_id`.
 5. Il exécute la tâche retournée.
 6. Il appelle `task_update` avec `status = done`, `blocked`, `todo` ou `canceled`.
+   - Si `status = blocked`, le claim actif est libéré mais, par défaut, `assigned_to_agent_id` devient l’agent qui met la tâche en pause.
+   - Pour libérer complètement une tâche mise en pause, l’agent passe explicitement `assigned_to_agent_id = null` dans le même appel `task_update`.
 7. Il répète jusqu’à ce que `task_claim_next` retourne aucune tâche.
 
 **Règles De Partage**
@@ -94,6 +96,8 @@ Deux agents ne doivent pas exécuter la même tâche en même temps.
 Une tâche assignée à un agent ne doit être réclamée que par cet agent.
 
 Une tâche non assignée peut être réclamée par n’importe quel agent ayant accès à la liste.
+
+Lorsqu’une tâche est mise en pause (`blocked`), elle reste assignée à l’agent qui l’a mise en pause sauf demande explicite de libération (`assigned_to_agent_id = null`) ou de transfert vers un autre agent.
 
 **Règle Centrale**
 `task_claim_next` est l’unique manière normale de prendre une tâche à exécuter. Un agent ne doit pas choisir manuellement une tâche depuis `task_list_get` puis la passer lui-même en `in_progress`, car cela peut créer des conflits entre agents.

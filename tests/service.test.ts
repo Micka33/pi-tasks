@@ -116,6 +116,45 @@ test("done update clears claim and sets completed_at", () => {
   }
 });
 
+test("blocked update keeps responsibility on pausing agent unless explicitly released", () => {
+  const { dbPath, cleanup } = tmpDb();
+  try {
+    const service = new TaskService({ dbPath });
+    const a = actor("agent-a");
+    const list = service.createTaskList(
+      { id: "pause", name: "Pause", scope_type: "workspace", scope_key: "/repo", visibility: "shared" },
+      a,
+    );
+    service.addManyTasks(
+      {
+        list_id: list.id,
+        tasks: [{ title: "pause and keep" }, { title: "pause and release" }],
+      },
+      a,
+    );
+
+    const keepClaimed = service.claimNextTask({ list_id: list.id }, a).task;
+    assert.ok(keepClaimed);
+    const kept = service.updateTask({ task_id: keepClaimed.id, status: "blocked" }, a);
+    assert.equal(kept.status, "blocked");
+    assert.equal(kept.assigned_to_agent_id, "agent-a");
+    assert.equal(kept.claimed_by_agent_id, null);
+    assert.equal(kept.claim_expires_at, null);
+
+    const releaseClaimed = service.claimNextTask({ list_id: list.id }, a).task;
+    assert.ok(releaseClaimed);
+    const released = service.updateTask({ task_id: releaseClaimed.id, status: "blocked", assigned_to_agent_id: null }, a);
+    assert.equal(released.status, "blocked");
+    assert.equal(released.assigned_to_agent_id, null);
+    assert.equal(released.claimed_by_agent_id, null);
+    assert.equal(released.claim_expires_at, null);
+
+    service.close();
+  } finally {
+    cleanup();
+  }
+});
+
 test("private lists are hidden, denied, and bypass-audited", () => {
   const { dbPath, cleanup } = tmpDb();
   try {

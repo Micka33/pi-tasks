@@ -138,7 +138,7 @@ The widget refreshes on session start, after `task_*` tool calls, and periodical
 - `task_add_many` — add several tasks transactionally.
 - `task_claim_next` — atomically claim the next eligible `todo` task.
 - `task_claim_refresh` — refresh a claim TTL without changing `started_at`.
-- `task_update` — update task fields or status, except `in_progress`.
+- `task_update` — update task fields or status, except `in_progress`. `status="blocked"` assigns the paused task to the acting agent by default; pass `assigned_to_agent_id: null` to release it.
 - `task_reorder` — reorder active tasks.
 - `task_release_expired_claims` — release expired claims back to `todo`.
 - `task_delete` — soft-delete a task via `deleted_at`.
@@ -150,6 +150,8 @@ The widget refreshes on session start, after `task_*` tool calls, and periodical
 `task_update(status = "in_progress")` is rejected intentionally to avoid multi-agent conflicts.
 
 For long tasks, call `task_claim_refresh` periodically. The default TTL is 2 hours.
+
+When pausing a task with `task_update(status = "blocked")`, the active claim is cleared but responsibility is kept by default: if `assigned_to_agent_id` is omitted, `pi-tasks` sets it to the agent that paused the task. To fully release the paused task, pass `assigned_to_agent_id: null` in the same `task_update` call. To hand it off, pass another agent id.
 
 ## Privacy model
 

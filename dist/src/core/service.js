@@ -234,7 +234,8 @@ export class TaskService {
                 sets.push("notes = ?");
                 params.push(normalizeNullableString(input.notes));
             }
-            if (input.assigned_to_agent_id !== undefined) {
+            const explicitAssignmentProvided = input.assigned_to_agent_id !== undefined;
+            if (explicitAssignmentProvided) {
                 sets.push("assigned_to_agent_id = ?");
                 params.push(normalizeNullableString(input.assigned_to_agent_id));
             }
@@ -252,6 +253,10 @@ export class TaskService {
                 }
                 else if (input.status === "blocked" || input.status === "todo") {
                     sets.push("completed_at = NULL", "claimed_by_agent_id = NULL", "claim_expires_at = NULL");
+                    if (input.status === "blocked" && !explicitAssignmentProvided) {
+                        sets.push("assigned_to_agent_id = ?");
+                        params.push(access.actor.agentId);
+                    }
                 }
             }
             if (sets.length === 0)

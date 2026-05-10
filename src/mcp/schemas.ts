@@ -75,7 +75,11 @@ export const taskUpdateSchema = z.object({
   description: OptionalNullableString,
   notes: OptionalNullableString,
   status: TaskStatus.optional(),
-  assigned_to_agent_id: OptionalNullableString,
+  assigned_to_agent_id: z
+    .string()
+    .nullable()
+    .optional()
+    .describe("Set an assignee. When status=blocked, omit to assign the paused task to the current agent; pass null to release it."),
   result: OptionalNullableString,
 });
 
