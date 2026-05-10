@@ -111,6 +111,24 @@ Example MCP config shape:
 }
 ```
 
+## Pi TUI widget
+
+The Pi extension shows a compact `pi-tasks` widget above the editor when visible task lists exist.
+
+It summarizes visible lists, status counts, and tasks assigned to or claimed by the current Pi session. It never bypasses private-list protection automatically.
+
+Control it with:
+
+```text
+/task-widget on
+/task-widget off
+/task-widget compact
+/task-widget full
+/task-widget refresh
+```
+
+The widget refreshes on session start, after `task_*` tool calls, and periodically every 10 seconds to catch updates made by other agents or MCP clients.
+
 ## Tools
 
 - `task_list_create` — create a task list.
