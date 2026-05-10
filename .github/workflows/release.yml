@@ -65,7 +65,17 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release
-          TARBALL="$(npm pack --pack-destination release)"
+          npm pack --pack-destination release
+
+          shopt -s nullglob
+          tarballs=(release/*.tgz)
+          if [[ ${#tarballs[@]} -ne 1 ]]; then
+            echo "Expected exactly one release tarball, found ${#tarballs[@]}" >&2
+            printf ' - %s\n' "${tarballs[@]}" >&2
+            exit 1
+          fi
+
+          TARBALL="$(basename "${tarballs[0]}")"
           sha256sum "release/$TARBALL" > "release/$TARBALL.sha256"
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
 
