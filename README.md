@@ -151,7 +151,7 @@ Pi currently renders at most 10 widget lines. `pi-tasks` stays under that limit 
 - `task_add_many` — add several tasks transactionally.
 - `task_claim_next` — atomically claim the next eligible `todo` task.
 - `task_claim_refresh` — refresh a claim TTL without changing `started_at`.
-- `task_update` — update task fields, `outcome`, or status, except `in_progress`. `status="blocked"` assigns the paused task to the acting agent by default; pass `assigned_to_agent_id: null` to release it.
+- `task_update` — update task fields, `notes`, `outcome`, or status, except `in_progress`. `notes` are task-local working memory; `outcome` is required when closing a task as `done` or `canceled`. `status="blocked"` assigns the paused task to the acting agent by default; pass `assigned_to_agent_id: null` to release it.
 - `task_reorder` — reorder active tasks.
 - `task_release_expired_claims` — release expired claims back to `todo`.
 - `task_delete` — soft-delete a task via `deleted_at`.
@@ -166,7 +166,9 @@ For long tasks, call `task_claim_refresh` periodically. The default TTL is 2 hou
 
 When pausing a task with `task_update(status = "blocked")`, the active claim is cleared but responsibility is kept by default: if `assigned_to_agent_id` is omitted, `pi-tasks` sets it to the agent that paused the task. To fully release the paused task, pass `assigned_to_agent_id: null` in the same `task_update` call. To hand it off, pass another agent id.
 
-`outcome` is the final result, deliverable, or conclusion for a completed or canceled task. Use `notes` for ongoing context while work is in progress; use `outcome` for the final summary. The field was previously named `result` and is migrated automatically in SQLite.
+Use `notes` as task-local working memory while a task is in progress: important context, choices in progress, blockers, assumptions, and next steps belong there.
+
+`outcome` is the final result, deliverable, or conclusion for a completed or canceled task. Closing a task with `status="done"` or `status="canceled"` requires a non-empty `outcome`; summarize the choices/decisions made, actions taken, and result obtained. The field was previously named `result` and is migrated automatically in SQLite.
 
 ## Privacy model
 

@@ -21,7 +21,9 @@ import {
 const CLAIM_GUIDELINES = [
   "Use task_claim_next as the only normal way to move a task to in_progress; never use task_update to set in_progress.",
   "Use task_claim_refresh to extend a long-running claim; it updates claim_expires_at without changing started_at.",
+  "Use task_update(notes=...) as task-local memory for important context, choices in progress, blockers, and next steps while working.",
   "After executing a claimed task, use task_update to set done, blocked, todo, or canceled.",
+  "When closing a task with status done or canceled, include outcome with choices/decisions, actions taken, and the result obtained.",
   "When pausing with task_update(status='blocked'), omit assigned_to_agent_id to keep the task assigned to the pausing agent; pass assigned_to_agent_id:null to release it completely.",
   "Respect assigned_to_agent_id: task_claim_next only returns unassigned tasks or tasks assigned to the current agent.",
   "Private task lists are enforced by pi-tasks; if access is denied, explain why a user-confirmed bypass is needed.",
@@ -99,7 +101,7 @@ export function registerPiTaskTools(pi: ExtensionAPI): void {
     {
       name: "task_update",
       label: "Update Task",
-      description: "Update task fields, outcome, or status. Setting status to in_progress is rejected; use task_claim_next instead. Setting status to blocked keeps assignment on the pausing agent unless assigned_to_agent_id:null is passed.",
+      description: "Update task fields, notes, outcome, or status. Notes are task-local working memory. Setting status to in_progress is rejected; use task_claim_next instead. Closing a task as done/canceled requires outcome with choices/decisions, actions taken, and result obtained. Setting status to blocked keeps assignment on the pausing agent unless assigned_to_agent_id:null is passed.",
       promptSnippet: "Update a task outcome, notes, assignment, or terminal/blocking status.",
       parameters: TaskUpdateParams,
       run: (service, params, access) => service.updateTask(params, access),

@@ -7,6 +7,11 @@ const Visibility = StringEnum(VISIBILITIES);
 const TaskStatus = StringEnum(TASK_STATUSES);
 
 const OptionalNullableString = Type.Optional(Type.Union([Type.String(), Type.Null()]));
+const TaskNotes = Type.Optional(
+  Type.Union([Type.String(), Type.Null()], {
+    description: "Ongoing working notes for agents. Use as task-local memory for important context, choices in progress, blockers, and next steps.",
+  }),
+);
 const TaskUpdateAssignedToAgentId = Type.Optional(
   Type.Union([Type.String(), Type.Null()], {
     description: "Set an assignee. When status=blocked, omit to assign the paused task to the current agent; pass null to release it.",
@@ -14,7 +19,7 @@ const TaskUpdateAssignedToAgentId = Type.Optional(
 );
 const TaskOutcome = Type.Optional(
   Type.Union([Type.String(), Type.Null()], {
-    description: "Final outcome, deliverable, or conclusion for a completed/canceled task. Formerly named result.",
+    description: "Required when closing a task as done/canceled. Summarize choices/decisions, actions taken, and the result obtained. Formerly named result.",
   }),
 );
 
@@ -51,7 +56,7 @@ export const TaskCreateParams = Type.Object({
   list_id: Type.String(),
   title: Type.String(),
   description: OptionalNullableString,
-  notes: OptionalNullableString,
+  notes: TaskNotes,
   position: Type.Optional(Type.Number({ description: "1-based desired position. Existing tasks are shifted down." })),
   assigned_to_agent_id: OptionalNullableString,
 });
@@ -63,7 +68,7 @@ export const TaskAddManyParams = Type.Object({
       id: Type.Optional(Type.String()),
       title: Type.String(),
       description: OptionalNullableString,
-      notes: OptionalNullableString,
+      notes: TaskNotes,
       assigned_to_agent_id: OptionalNullableString,
     }),
   ),
@@ -84,7 +89,7 @@ export const TaskUpdateParams = Type.Object({
   task_id: Type.String(),
   title: Type.Optional(Type.String()),
   description: OptionalNullableString,
-  notes: OptionalNullableString,
+  notes: TaskNotes,
   status: Type.Optional(TaskStatus),
   assigned_to_agent_id: TaskUpdateAssignedToAgentId,
   outcome: TaskOutcome,

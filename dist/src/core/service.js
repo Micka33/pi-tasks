@@ -239,15 +239,25 @@ export class TaskService {
                 sets.push("assigned_to_agent_id = ?");
                 params.push(normalizeNullableString(input.assigned_to_agent_id));
             }
+            let normalizedOutcome;
             if (input.outcome !== undefined) {
+                const outcomeValue = normalizeNullableString(input.outcome);
+                normalizedOutcome = outcomeValue;
                 sets.push("outcome = ?");
-                params.push(normalizeNullableString(input.outcome));
+                params.push(outcomeValue);
             }
             if (input.status !== undefined) {
                 validateTaskStatus(input.status);
                 sets.push("status = ?");
                 params.push(input.status);
                 if (input.status === "done" || input.status === "canceled") {
+                    const finalOutcome = normalizedOutcome !== undefined ? normalizedOutcome : task.outcome;
+                    if (!finalOutcome) {
+                        throw new ValidationError("outcome is required when closing a task with status done or canceled", {
+                            task_id: task.id,
+                            status: input.status,
+                        });
+                    }
                     sets.push("completed_at = ?", "claimed_by_agent_id = NULL", "claim_expires_at = NULL");
                     params.push(now);
                 }

@@ -117,6 +117,38 @@ test("done update clears claim and sets completed_at", () => {
   }
 });
 
+test("closing a task requires an outcome", () => {
+  const { dbPath, cleanup } = tmpDb();
+  try {
+    const service = new TaskService({ dbPath });
+    const a = actor("agent-a");
+    const list = service.createTaskList(
+      { id: "outcome", name: "Outcome", scope_type: "workspace", scope_key: "/repo", visibility: "shared" },
+      a,
+    );
+    service.createTask({ list_id: list.id, title: "needs outcome" }, a);
+    const claimed = service.claimNextTask({ list_id: list.id }, a).task;
+    assert.ok(claimed);
+
+    assert.throws(
+      () => service.updateTask({ task_id: claimed.id, status: "done" }, a),
+      (error) => error instanceof ValidationError && error.message.includes("outcome is required"),
+    );
+    assert.throws(
+      () => service.updateTask({ task_id: claimed.id, status: "done", outcome: "" }, a),
+      (error) => error instanceof ValidationError && error.message.includes("outcome is required"),
+    );
+
+    const updated = service.updateTask({ task_id: claimed.id, outcome: "Decision: ship. Actions: implemented. Result: tests pass." }, a);
+    const closed = service.updateTask({ task_id: updated.id, status: "done" }, a);
+    assert.equal(closed.status, "done");
+    assert.equal(closed.outcome, "Decision: ship. Actions: implemented. Result: tests pass.");
+    service.close();
+  } finally {
+    cleanup();
+  }
+});
+
 test("blocked update keeps responsibility on pausing agent unless explicitly released", () => {
   const { dbPath, cleanup } = tmpDb();
   try {

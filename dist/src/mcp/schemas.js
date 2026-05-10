@@ -4,11 +4,16 @@ const ScopeType = z.enum(SCOPE_TYPES);
 const Visibility = z.enum(VISIBILITIES);
 const TaskStatus = z.enum(TASK_STATUSES);
 const OptionalNullableString = z.string().nullable().optional();
+const TaskNotes = z
+    .string()
+    .nullable()
+    .optional()
+    .describe("Ongoing working notes for agents. Use as task-local memory for important context, choices in progress, blockers, and next steps.");
 const TaskOutcome = z
     .string()
     .nullable()
     .optional()
-    .describe("Final outcome, deliverable, or conclusion for a completed/canceled task. Formerly named result.");
+    .describe("Required when closing a task as done/canceled. Summarize choices/decisions, actions taken, and the result obtained. Formerly named result.");
 export const taskListCreateSchema = z.object({
     id: z.string().optional().describe("Optional stable list id. Generated when omitted."),
     name: z.string().min(1).describe("Human-readable task list name."),
@@ -40,7 +45,7 @@ export const taskCreateSchema = z.object({
     list_id: z.string(),
     title: z.string().min(1),
     description: OptionalNullableString,
-    notes: OptionalNullableString,
+    notes: TaskNotes,
     position: z.number().optional().describe("1-based desired position. Existing tasks are shifted down."),
     assigned_to_agent_id: OptionalNullableString,
 });
@@ -50,7 +55,7 @@ export const taskAddManySchema = z.object({
         id: z.string().optional(),
         title: z.string().min(1),
         description: OptionalNullableString,
-        notes: OptionalNullableString,
+        notes: TaskNotes,
         assigned_to_agent_id: OptionalNullableString,
     })),
 });
@@ -67,7 +72,7 @@ export const taskUpdateSchema = z.object({
     task_id: z.string(),
     title: z.string().optional(),
     description: OptionalNullableString,
-    notes: OptionalNullableString,
+    notes: TaskNotes,
     status: TaskStatus.optional(),
     assigned_to_agent_id: z
         .string()

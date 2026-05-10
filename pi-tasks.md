@@ -47,12 +47,12 @@ Un agent peut être :
 | `position` | ordre d’exécution dans la liste |
 | `title` | titre court de la tâche |
 | `description` | description détaillée optionnelle |
-| `notes` | notes de suivi optionnelles |
+| `notes` | mémoire locale de travail pour l’agent : contexte important, choix en cours, blocages, hypothèses et prochaines étapes |
 | `status` | statut courant de la tâche |
 | `assigned_to_agent_id` | agent auquel la tâche est réservée, optionnel |
 | `claimed_by_agent_id` | agent qui exécute actuellement la tâche |
 | `claim_expires_at` | date d’expiration du claim |
-| `outcome` | résultat final, livrable ou conclusion produit à la fin de la tâche ; utiliser `notes` pour le contexte en cours, `outcome` pour le résumé final |
+| `outcome` | obligatoire lors de la fermeture en `done` ou `canceled` ; résumé final des choix/décisions, actions prises et résultat obtenu |
 | `created_at` | date de création |
 | `updated_at` | date de dernière modification |
 | `started_at` | date de début d’exécution |
@@ -68,7 +68,7 @@ Un agent peut être :
 | `task_create` | ajouter une tâche unique |
 | `task_add_many` | ajouter plusieurs tâches en une fois |
 | `task_claim_next` | réclamer atomiquement la prochaine tâche `todo` |
-| `task_update` | modifier une tâche ou son statut |
+| `task_update` | modifier une tâche, ses notes, son outcome ou son statut |
 | `task_reorder` | réordonner des tâches |
 | `task_release_expired_claims` | libérer les claims expirés |
 | `task_delete` | supprimer une tâche |
@@ -80,7 +80,9 @@ Un agent peut être :
 3. Il ajoute les tâches avec `task_create` ou `task_add_many`.
 4. Il appelle `task_claim_next` avec son `agent_id`.
 5. Il exécute la tâche retournée.
+   - Pendant l’exécution, il peut appeler `task_update(notes = ...)` pour stocker la mémoire locale de la tâche : contexte important, choix en cours, blocages, hypothèses et prochaines étapes.
 6. Il appelle `task_update` avec `status = done`, `blocked`, `todo` ou `canceled`.
+   - Si `status = done` ou `canceled`, il doit fournir `outcome` avec les choix/décisions, les actions prises et le résultat obtenu.
    - Si `status = blocked`, le claim actif est libéré mais, par défaut, `assigned_to_agent_id` devient l’agent qui met la tâche en pause.
    - Pour libérer complètement une tâche mise en pause, l’agent passe explicitement `assigned_to_agent_id = null` dans le même appel `task_update`.
 7. Il répète jusqu’à ce que `task_claim_next` retourne aucune tâche.
