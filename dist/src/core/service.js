@@ -466,7 +466,7 @@ export class TaskService {
         const row = this.db
             .prepare("SELECT COALESCE(MAX(position), 0) AS max_position FROM tasks WHERE list_id = ? AND deleted_at IS NULL")
             .get(listId);
-        return row?.max_position ?? 0;
+        return row.max_position;
     }
     canAccessList(list, actor) {
         if (list.visibility === "shared")
@@ -481,12 +481,11 @@ export class TaskService {
         if (!access.privateBypass) {
             throw new PrivateListAccessError(list, access.actor.agentId);
         }
-        validateRequiredString(access.privateBypass.reason, "privateBypass.reason");
-        this.logPrivateAccess(list, access);
+        const privateBypass = access.privateBypass;
+        validateRequiredString(privateBypass.reason, "privateBypass.reason");
+        this.logPrivateAccess(list, { ...access, privateBypass });
     }
     logPrivateAccess(list, access) {
-        if (!access.privateBypass)
-            return;
         this.db
             .prepare(`INSERT INTO private_access_events (id, list_id, actor_agent_id, tool_name, reason, created_at)
          VALUES (?, ?, ?, ?, ?, ?)`)

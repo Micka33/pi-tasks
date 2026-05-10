@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { NotFoundError, PrivateListAccessError, ValidationError } from "../src/core/errors.js";
+import { ClaimConflictError, NotFoundError, PrivateListAccessError, ValidationError } from "../src/core/errors.js";
 import { TaskService } from "../src/core/service.js";
 import type { AccessOptions, ActorContext } from "../src/core/types.js";
 
@@ -45,6 +45,146 @@ test("creates lists/tasks and claims the next eligible task without duplicates",
     assert.notEqual(claimA.id, claimB.id);
     assert.equal(claimA.status, "in_progress");
     assert.equal(claimB.status, "in_progress");
+    service.close();
+  } finally {
+    cleanup();
+  }
+});
+
+test("service validates inputs and handles list/task edge cases", () => {
+  const { dbPath, cleanup } = tmpDb();
+  try {
+    const service = new TaskService({ dbPath, now: () => new Date("2026-01-01T00:00:00.000Z") });
+    const a = actor("agent-a");
+    const b = actor("agent-b");
+
+    assert.deepEqual(service.getAgentSummary(a.actor), { db_path: dbPath, agent_id: "agent-a", source: "test" });
+    assert.throws(() => service.createTaskList({ name: "Bad", scope_type: "bad" as any, scope_key: "/repo" }, a), ValidationError);
+    assert.throws(() => service.createTaskList({ name: "Bad", scope_type: "workspace", scope_key: "/repo", visibility: "bad" as any }, a), ValidationError);
+    assert.throws(() => service.createTaskList({ name: " ", scope_type: "workspace", scope_key: "/repo" }, a), ValidationError);
+    assert.throws(() => service.createTaskList({ name: "Bad", scope_type: "workspace", scope_key: " " }, a), ValidationError);
+
+    const shared = service.createTaskList(
+      { name: "Shared Filters", scope_type: "workspace", scope_key: "/repo", visibility: "shared", owner_agent_id: "owner-x" },
+      a,
+    );
+    const ownerless = service.createTaskList(
+      { id: "ownerless", name: "Ownerless", scope_type: "custom", scope_key: "custom-key", visibility: "shared", owner_agent_id: null },
+      a,
+    );
+    const privateList = service.createTaskList(
+      { id: "private-filters", name: "Private Filters", scope_type: "workspace", scope_key: "/repo", visibility: "private" },
+      a,
+    );
+    const creatorPrivateList = service.createTaskList(
+      { id: "creator-private", name: "Creator Private", scope_type: "workspace", scope_key: "/repo", visibility: "private", owner_agent_id: null },
+      a,
+    );
+
+    assert.equal(shared.owner_agent_id, "owner-x");
+    assert.equal(ownerless.owner_agent_id, null);
+    assert.equal(privateList.owner_agent_id, "agent-a");
+    assert.equal(creatorPrivateList.owner_agent_id, null);
+    assert.equal(service.getTaskList({ list_id: creatorPrivateList.id }, a).list.id, creatorPrivateList.id);
+    assert.throws(() => service.getTaskList({ list_id: creatorPrivateList.id }, b), PrivateListAccessError);
+    assert.equal(service.findTaskLists({ scope_type: "workspace", scope_key: "/repo", visibility: "shared", owner_agent_id: "owner-x", created_by_agent_id: "agent-a", name: "filters" }, b).length, 1);
+    assert.equal(service.findTaskLists({ owner_agent_id: null }, b).some((list) => list.id === ownerless.id), true);
+    assert.throws(() => service.findTaskLists({ scope_type: "nope" as any }, a), ValidationError);
+    assert.throws(() => service.findTaskLists({ visibility: "nope" as any }, a), ValidationError);
+    assert.throws(() => service.findTaskLists({ include_inaccessible_private: true }, b), PrivateListAccessError);
+    assert.equal(
+      service.findTaskLists(
+        { include_inaccessible_private: true },
+        { ...b, privateBypass: { toolName: "find", reason: "confirmed" } },
+      ).some((list) => list.id === privateList.id),
+      true,
+    );
+
+    assert.throws(() => service.createTask({ list_id: shared.id, title: " " }, a), ValidationError);
+    assert.throws(() => service.createTask({ list_id: shared.id, title: "bad", position: 0 }, a), ValidationError);
+    const second = service.createTask({ id: "second", list_id: shared.id, title: " second ", description: " ", notes: " note ", assigned_to_agent_id: " " }, a);
+    const first = service.createTask({ id: "first", list_id: shared.id, title: "first", position: 1 }, a);
+    const ordered = service.getTaskList({ list_id: shared.id }, a).tasks;
+    assert.deepEqual(ordered.map((task) => task.id), ["first", "second"]);
+    assert.deepEqual(service.getTaskList({ list_id: shared.id, statuses: ["todo"] }, a).tasks.map((task) => task.id), ["first", "second"]);
+    assert.equal(second.description, null);
+    assert.equal(second.assigned_to_agent_id, null);
+
+    assert.throws(() => service.addManyTasks({ list_id: shared.id, tasks: [] }, a), ValidationError);
+    assert.throws(() => service.addManyTasks({ list_id: shared.id, tasks: "nope" as any }, a), ValidationError);
+    assert.throws(() => service.addManyTasks({ list_id: shared.id, tasks: [{ title: " " }] }, a), ValidationError);
+    assert.equal(service.addManyTasks({ list_id: shared.id, tasks: [{ id: "many-id", title: "many with id" }] }, a)[0]?.id, "many-id");
+
+    const none = service.claimNextTask({ list_id: ownerless.id, release_expired_first: false }, a);
+    assert.equal(none.task, null);
+    assert.throws(() => service.claimNextTask({ list_id: shared.id, claim_ttl_seconds: 0 }, a), ValidationError);
+
+    const claimed = service.claimNextTask({ list_id: shared.id, release_expired_first: false, claim_ttl_seconds: 1.8 }, a).task;
+    assert.ok(claimed);
+    assert.throws(() => service.refreshClaim({ task_id: claimed.id, claim_ttl_seconds: -1 }, a), ValidationError);
+    assert.throws(() => service.refreshClaim({ task_id: claimed.id }, b), ClaimConflictError);
+    service.updateTask({ task_id: claimed.id, description: "safe edit by another agent" }, b);
+    assert.throws(() => service.updateTask({ task_id: claimed.id, status: "done", outcome: "done" }, b), ClaimConflictError);
+    service.updateTask({ task_id: claimed.id, notes: "updated notes" }, b);
+    const backToTodo = service.updateTask({ task_id: claimed.id, status: "todo", assigned_to_agent_id: null }, a);
+    assert.equal(backToTodo.status, "todo");
+
+    assert.throws(() => service.refreshClaim({ task_id: claimed.id }, a), ClaimConflictError);
+    assert.throws(() => service.updateTask({ task_id: claimed.id, status: "invalid" as any }, a), ValidationError);
+    assert.throws(() => service.updateTask({ task_id: claimed.id, title: " " }, a), ValidationError);
+    const unchanged = service.updateTask({ task_id: claimed.id }, a);
+    assert.equal(unchanged.id, claimed.id);
+
+    assert.throws(() => service.reorderTasks({ list_id: shared.id, task_ids: "nope" as any }, a), ValidationError);
+    assert.throws(() => service.reorderTasks({ list_id: shared.id, task_ids: ["first", "first"] }, a), ValidationError);
+    assert.throws(() => service.reorderTasks({ list_id: shared.id, task_ids: ["missing"] }, a), NotFoundError);
+
+    const deleted = service.deleteTask({ task_id: claimed.id }, a);
+    assert.ok(deleted.deleted_at);
+    assert.equal(service.deleteTask({ task_id: claimed.id }, a).deleted_at, deleted.deleted_at);
+    assert.throws(() => service.updateTask({ task_id: claimed.id, title: "deleted" }, a), NotFoundError);
+    assert.throws(() => service.getTaskList({ list_id: shared.id, statuses: ["bad" as any] }, a), ValidationError);
+    assert.throws(() => service.getTaskList({ list_id: "missing" }, a), NotFoundError);
+    assert.throws(() => service.deleteTask({ task_id: "missing" }, a), NotFoundError);
+
+    const emptyServiceDb = tmpDb();
+    try {
+      const emptyService = new TaskService({ dbPath: emptyServiceDb.dbPath });
+      assert.deepEqual(emptyService.getPrivateAccessEvents({}, actor("agent-z")), []);
+      emptyService.close();
+    } finally {
+      emptyServiceDb.cleanup();
+    }
+    assert.throws(() => service.getPrivateAccessEvents({ actor_agent_id: " " }, a), ValidationError);
+    assert.throws(() => service.getPrivateAccessEvents({ tool_name: " " }, a), ValidationError);
+    assert.throws(() => service.getPrivateAccessEvents({ limit: 1001 }, a), ValidationError);
+
+    service.close();
+  } finally {
+    cleanup();
+  }
+});
+
+test("releaseExpiredClaims releases only visible expired claims", () => {
+  const { dbPath, cleanup } = tmpDb();
+  try {
+    let now = new Date("2026-01-01T00:00:00.000Z");
+    const service = new TaskService({ dbPath, now: () => now });
+    const a = actor("agent-a");
+    const b = actor("agent-b");
+    const shared = service.createTaskList({ id: "expired-shared", name: "Expired Shared", scope_type: "workspace", scope_key: "/repo" }, a);
+    const privateList = service.createTaskList({ id: "expired-private", name: "Expired Private", scope_type: "workspace", scope_key: "/repo", visibility: "private" }, a);
+    service.createTask({ id: "shared-task", list_id: shared.id, title: "shared" }, a);
+    service.createTask({ id: "private-task", list_id: privateList.id, title: "private" }, a);
+    service.claimNextTask({ list_id: shared.id, claim_ttl_seconds: 1 }, a);
+    service.claimNextTask({ list_id: privateList.id, claim_ttl_seconds: 1 }, a);
+
+    now = new Date("2026-01-01T00:00:02.000Z");
+    const releasedForB = service.releaseExpiredClaims({}, b).released;
+    assert.deepEqual(releasedForB.map((task) => task.id), ["shared-task"]);
+    const releasedForA = service.releaseExpiredClaims({ list_id: privateList.id }, a).released;
+    assert.deepEqual(releasedForA.map((task) => task.id), ["private-task"]);
+
     service.close();
   } finally {
     cleanup();
@@ -222,6 +362,40 @@ test("task_list_delete soft-deletes list and active tasks while clearing claims"
     service.close();
   } finally {
     cleanup();
+  }
+});
+
+test("row conversion rejects invalid SQLite field types", () => {
+  const badNumber = tmpDb();
+  try {
+    const service = new TaskService({ dbPath: badNumber.dbPath });
+    const a = actor("agent-a");
+    service.createTaskList({ id: "bad-number", name: "Bad Number", scope_type: "workspace", scope_key: "/repo" }, a);
+    service.close();
+    const raw = new DatabaseSync(badNumber.dbPath);
+    raw.prepare("INSERT INTO tasks VALUES ('bad-task', 'bad-number', X'01', 'Bad', NULL, NULL, 'todo', NULL, NULL, NULL, NULL, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', NULL, NULL, NULL)").run();
+    raw.close();
+    const reader = new TaskService({ dbPath: badNumber.dbPath });
+    assert.throws(() => reader.getTaskList({ list_id: "bad-number" }, a), /Expected number field position/);
+    reader.close();
+  } finally {
+    badNumber.cleanup();
+  }
+
+  const badNullable = tmpDb();
+  try {
+    const service = new TaskService({ dbPath: badNullable.dbPath });
+    const a = actor("agent-a");
+    service.createTaskList({ id: "bad-nullable", name: "Bad Nullable", scope_type: "workspace", scope_key: "/repo" }, a);
+    service.close();
+    const raw = new DatabaseSync(badNullable.dbPath);
+    raw.prepare("INSERT INTO tasks VALUES ('bad-task', 'bad-nullable', 1, 'Bad', NULL, NULL, 'todo', X'01', NULL, NULL, NULL, '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', NULL, NULL, NULL)").run();
+    raw.close();
+    const reader = new TaskService({ dbPath: badNullable.dbPath });
+    assert.throws(() => reader.getTaskList({ list_id: "bad-nullable" }, a), /Expected nullable string field assigned_to_agent_id/);
+    reader.close();
+  } finally {
+    badNullable.cleanup();
   }
 });
 

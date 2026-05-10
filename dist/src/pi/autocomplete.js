@@ -53,16 +53,18 @@ export function taskListsToAutocompleteItems(lists, prefix) {
 function loadTaskListIdSuggestions(ctx, prefix) {
     const resolved = resolvePiAgentId(ctx.sessionManager);
     const service = new TaskService({ cwd: ctx.cwd });
+    let suggestions = [];
     try {
         const access = { actor: { agentId: resolved.agentId, source: "pi" } };
-        return taskListsToAutocompleteItems(service.findTaskLists({}, access), prefix);
+        suggestions = taskListsToAutocompleteItems(service.findTaskLists({}, access), prefix);
     }
     catch {
-        return [];
+        suggestions = [];
     }
     finally {
         service.close();
     }
+    return suggestions;
 }
 function scoreListMatch(list, query) {
     if (!query)

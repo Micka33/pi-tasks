@@ -62,14 +62,16 @@ export function taskListsToAutocompleteItems(lists: TaskList[], prefix: string):
 function loadTaskListIdSuggestions(ctx: ExtensionContext, prefix: string): AutocompleteItem[] {
   const resolved = resolvePiAgentId(ctx.sessionManager);
   const service = new TaskService({ cwd: ctx.cwd });
+  let suggestions: AutocompleteItem[] = [];
   try {
     const access: AccessOptions = { actor: { agentId: resolved.agentId, source: "pi" } };
-    return taskListsToAutocompleteItems(service.findTaskLists({}, access), prefix);
+    suggestions = taskListsToAutocompleteItems(service.findTaskLists({}, access), prefix);
   } catch {
-    return [];
+    suggestions = [];
   } finally {
     service.close();
   }
+  return suggestions;
 }
 
 function scoreListMatch(list: TaskList, query: string): number {

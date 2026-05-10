@@ -240,11 +240,6 @@ function buildFullEntries(dashboard: DashboardData): FrameEntry[] {
   const hiddenTaskNotes: string[] = [];
 
   for (let i = 0; i < lists.length; i += 1) {
-    if (entries.length >= budget) {
-      hiddenListCount = lists.length - i;
-      break;
-    }
-
     const item = lists[i]!;
     entries.push(separator(formatListSummary(item)));
 
@@ -346,9 +341,7 @@ function addOmissionLine(entries: FrameEntry[], budget: number, text: string): v
 
 function frameEntries(title: string, entries: FrameEntry[], footer: string, maxLines: number): string[] {
   const bodyBudget = Math.max(1, maxLines - 2);
-  const safeEntries = entries.length <= bodyBudget
-    ? entries
-    : [...entries.slice(0, bodyBudget - 1), line(`… ${entries.length - bodyBudget + 1} ligne(s) masquée(s) · /tasks <list_id>`)];
+  const safeEntries = entries.slice(0, bodyBudget);
 
   const normalizedTitle = truncateLine(title, MAX_INNER_CHARS);
   const normalizedFooter = truncateLine(footer, MAX_INNER_CHARS);
@@ -367,10 +360,11 @@ function frameEntries(title: string, entries: FrameEntry[], footer: string, maxL
   ];
 }
 
-function borderLine(left: string, right: string, width: number, label?: string, prefix = " "): string {
+function borderLine(left: string, right: string, width: number, label: string, prefix = " "): string {
   const span = width + 2;
-  const labelText = label ? `${prefix}${label} ` : "";
-  return `${left}${labelText}${"─".repeat(Math.max(0, span - labelText.length))}${right}`;
+  const labelText = `${prefix}${label} `;
+  const fillWidth = span > labelText.length ? span - labelText.length : 0;
+  return `${left}${labelText}${"─".repeat(fillWidth)}${right}`;
 }
 
 function bodyLine(text: string, width: number): string {

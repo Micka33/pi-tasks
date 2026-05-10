@@ -599,8 +599,8 @@ export class TaskService {
   private maxActivePosition(listId: string): number {
     const row = this.db
       .prepare("SELECT COALESCE(MAX(position), 0) AS max_position FROM tasks WHERE list_id = ? AND deleted_at IS NULL")
-      .get(listId) as { max_position: number } | undefined;
-    return row?.max_position ?? 0;
+      .get(listId) as { max_position: number };
+    return row.max_position;
   }
 
   private canAccessList(list: TaskList, actor: ActorContext): boolean {
@@ -614,12 +614,12 @@ export class TaskService {
     if (!access.privateBypass) {
       throw new PrivateListAccessError(list, access.actor.agentId);
     }
-    validateRequiredString(access.privateBypass.reason, "privateBypass.reason");
-    this.logPrivateAccess(list, access);
+    const privateBypass = access.privateBypass;
+    validateRequiredString(privateBypass.reason, "privateBypass.reason");
+    this.logPrivateAccess(list, { ...access, privateBypass });
   }
 
-  private logPrivateAccess(list: TaskList, access: AccessOptions): void {
-    if (!access.privateBypass) return;
+  private logPrivateAccess(list: TaskList, access: AccessOptions & { privateBypass: NonNullable<AccessOptions["privateBypass"]> }): void {
     this.db
       .prepare(
         `INSERT INTO private_access_events (id, list_id, actor_agent_id, tool_name, reason, created_at)
