@@ -13,6 +13,7 @@ import {
   taskCreateSchema,
   taskDeleteSchema,
   taskListCreateSchema,
+  taskListDeleteSchema,
   taskListGetSchema,
   taskListsFindSchema,
   taskReleaseExpiredClaimsSchema,
@@ -59,6 +60,13 @@ export function registerMcpTaskTools(server: McpServer): void {
       inputSchema: taskListGetSchema,
       readOnly: true,
       run: (service, params, access) => service.getTaskList(params, access),
+    },
+    {
+      name: "task_list_delete",
+      title: "Delete Task List",
+      description: "Soft-delete a task list and all active tasks in it by setting deleted_at. Claims are cleared; rows remain in SQLite for audit/history." + COMMON_DESCRIPTION_SUFFIX,
+      inputSchema: taskListDeleteSchema,
+      run: (service, params, access) => service.deleteTaskList(params, access),
     },
     {
       name: "task_create",

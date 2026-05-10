@@ -1,4 +1,4 @@
-import { type AccessOptions, type ActorContext, type AddManyTasksInput, type ClaimNextTaskInput, type ClaimResult, type CreateTaskInput, type CreateTaskListInput, type DeleteTaskInput, type FindTaskListsInput, type GetTaskListInput, type PrivateAccessEvent, type RefreshClaimInput, type ReleaseExpiredClaimsInput, type ReleaseExpiredClaimsResult, type ReorderTasksInput, type Task, type TaskList, type TaskListWithTasks, type UpdateTaskInput } from "./types.js";
+import { type AccessOptions, type ActorContext, type AddManyTasksInput, type ClaimNextTaskInput, type ClaimResult, type CreateTaskInput, type CreateTaskListInput, type DeleteTaskInput, type DeleteTaskListInput, type DeleteTaskListResult, type FindTaskListsInput, type GetTaskListInput, type PrivateAccessEvent, type RefreshClaimInput, type ReleaseExpiredClaimsInput, type ReleaseExpiredClaimsResult, type ReorderTasksInput, type Task, type TaskList, type TaskListWithTasks, type UpdateTaskInput } from "./types.js";
 interface TaskServiceOptions {
     dbPath?: string;
     cwd?: string;
@@ -25,6 +25,7 @@ export declare class TaskService {
     updateTask(input: UpdateTaskInput, access: AccessOptions): Task;
     reorderTasks(input: ReorderTasksInput, access: AccessOptions): Task[];
     releaseExpiredClaims(input: ReleaseExpiredClaimsInput, access: AccessOptions): ReleaseExpiredClaimsResult;
+    deleteTaskList(input: DeleteTaskListInput, access: AccessOptions): DeleteTaskListResult;
     deleteTask(input: DeleteTaskInput, access: AccessOptions): Task;
     getPrivateAccessEvents(listId: string): PrivateAccessEvent[];
     private releaseExpiredClaimsInternal;

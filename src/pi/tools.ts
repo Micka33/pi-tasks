@@ -11,6 +11,7 @@ import {
   TaskCreateParams,
   TaskDeleteParams,
   TaskListCreateParams,
+  TaskListDeleteParams,
   TaskListGetParams,
   TaskListsFindParams,
   TaskReleaseExpiredClaimsParams,
@@ -65,6 +66,14 @@ export function registerPiTaskTools(pi: ExtensionAPI): void {
       promptSnippet: "Read a task list and its tasks in position order.",
       parameters: TaskListGetParams,
       run: (service, params, access) => service.getTaskList(params, access),
+    },
+    {
+      name: "task_list_delete",
+      label: "Delete Task List",
+      description: "Soft-delete a task list and all active tasks in it by setting deleted_at. Claims are cleared; rows remain in SQLite for audit/history.",
+      promptSnippet: "Soft-delete a task list and all active tasks it contains.",
+      parameters: TaskListDeleteParams,
+      run: (service, params, access) => service.deleteTaskList(params, access),
     },
     {
       name: "task_create",

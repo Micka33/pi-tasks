@@ -66,6 +66,9 @@ export declare const TaskReorderParams: Type.TObject<{
 export declare const TaskReleaseExpiredClaimsParams: Type.TObject<{
     list_id: Type.TOptional<Type.TString>;
 }>;
+export declare const TaskListDeleteParams: Type.TObject<{
+    list_id: Type.TString;
+}>;
 export declare const TaskDeleteParams: Type.TObject<{
     task_id: Type.TString;
 }>;

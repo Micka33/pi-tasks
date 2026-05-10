@@ -1,7 +1,7 @@
 import { PrivateListAccessError, serializeError } from "../core/errors.js";
 import { resolvePiAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
-import { TaskAddManyParams, TaskClaimNextParams, TaskClaimRefreshParams, TaskCreateParams, TaskDeleteParams, TaskListCreateParams, TaskListGetParams, TaskListsFindParams, TaskReleaseExpiredClaimsParams, TaskReorderParams, TaskUpdateParams, } from "./schemas.js";
+import { TaskAddManyParams, TaskClaimNextParams, TaskClaimRefreshParams, TaskCreateParams, TaskDeleteParams, TaskListCreateParams, TaskListDeleteParams, TaskListGetParams, TaskListsFindParams, TaskReleaseExpiredClaimsParams, TaskReorderParams, TaskUpdateParams, } from "./schemas.js";
 const CLAIM_GUIDELINES = [
     "Use task_claim_next as the only normal way to move a task to in_progress; never use task_update to set in_progress.",
     "Use task_claim_refresh to extend a long-running claim; it updates claim_expires_at without changing started_at.",
@@ -37,6 +37,14 @@ export function registerPiTaskTools(pi) {
             promptSnippet: "Read a task list and its tasks in position order.",
             parameters: TaskListGetParams,
             run: (service, params, access) => service.getTaskList(params, access),
+        },
+        {
+            name: "task_list_delete",
+            label: "Delete Task List",
+            description: "Soft-delete a task list and all active tasks in it by setting deleted_at. Claims are cleared; rows remain in SQLite for audit/history.",
+            promptSnippet: "Soft-delete a task list and all active tasks it contains.",
+            parameters: TaskListDeleteParams,
+            run: (service, params, access) => service.deleteTaskList(params, access),
         },
         {
             name: "task_create",

@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { PrivateListAccessError, ValidationError } from "../src/core/errors.js";
+import { NotFoundError, PrivateListAccessError, ValidationError } from "../src/core/errors.js";
 import { TaskService } from "../src/core/service.js";
 import type { AccessOptions, ActorContext } from "../src/core/types.js";
 
@@ -181,6 +181,43 @@ test("blocked update keeps responsibility on pausing agent unless explicitly rel
     assert.equal(released.assigned_to_agent_id, null);
     assert.equal(released.claimed_by_agent_id, null);
     assert.equal(released.claim_expires_at, null);
+
+    service.close();
+  } finally {
+    cleanup();
+  }
+});
+
+test("task_list_delete soft-deletes list and active tasks while clearing claims", () => {
+  const { dbPath, cleanup } = tmpDb();
+  try {
+    const service = new TaskService({ dbPath });
+    const a = actor("agent-a");
+    const list = service.createTaskList(
+      { id: "delete-list", name: "Delete List", scope_type: "workspace", scope_key: "/repo", visibility: "shared" },
+      a,
+    );
+    service.addManyTasks({ list_id: list.id, tasks: [{ title: "one" }, { title: "two" }] }, a);
+    const claimed = service.claimNextTask({ list_id: list.id }, a).task;
+    assert.ok(claimed);
+
+    const deleted = service.deleteTaskList({ list_id: list.id }, a);
+    assert.ok(deleted.list.deleted_at);
+    assert.equal(deleted.deleted_tasks.length, 2);
+    assert.equal(deleted.deleted_tasks.every((task) => task.deleted_at && task.claimed_by_agent_id === null && task.claim_expires_at === null), true);
+    assert.deepEqual(service.findTaskLists({}, a), []);
+    assert.throws(
+      () => service.getTaskList({ list_id: list.id }, a),
+      (error) => error instanceof NotFoundError,
+    );
+
+    const withDeleted = service.getTaskList({ list_id: list.id, include_deleted: true }, a);
+    assert.equal(withDeleted.tasks.length, 2);
+    assert.equal(withDeleted.tasks.every((task) => task.deleted_at), true);
+
+    const idempotent = service.deleteTaskList({ list_id: list.id }, a);
+    assert.equal(idempotent.list.id, list.id);
+    assert.equal(idempotent.deleted_tasks.length, 0);
 
     service.close();
   } finally {

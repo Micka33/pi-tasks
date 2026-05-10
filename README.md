@@ -130,13 +130,14 @@ Control it with:
 Useful commands:
 
 ```text
-/task-lists          # compact: only name + id
-/task-lists full     # complete JSON metadata
-/tasks <list_id>     # readable task details, including ids, agents, times, descriptions, notes, outcome
-/tasks <list_id> full # complete JSON for the list and tasks
+/task-lists            # compact: only name + id
+/task-lists full       # complete JSON metadata
+/tasks <list_id>       # readable task details, including ids, agents, times, descriptions, notes, outcome
+/tasks <list_id> full  # complete JSON for the list and tasks
+/task-list-delete <list_id> # soft-delete a list and all active tasks in it
 ```
 
-`/tasks <list_id>` supports Pi TUI autocomplete for visible task-list ids. Type `/tasks ` then trigger completion, or start typing a list id/name to filter suggestions. `/task-widget` also autocompletes its actions: `on`, `off`, `compact`, `full`, `refresh`.
+`/tasks <list_id>` and `/task-list-delete <list_id>` support Pi TUI autocomplete for visible task-list ids. Type `/tasks ` then trigger completion, or start typing a list id/name to filter suggestions. `/task-widget` also autocompletes its actions: `on`, `off`, `compact`, `full`, `refresh`.
 
 The widget refreshes on session start, after `task_*` tool calls, and periodically every 10 seconds to catch updates made by other agents or MCP clients.
 
@@ -147,6 +148,7 @@ Pi currently renders at most 10 widget lines. `pi-tasks` stays under that limit 
 - `task_list_create` — create a task list.
 - `task_lists_find` — find visible lists by scope, visibility, owner, creator, or name.
 - `task_list_get` — read a list and tasks in execution order.
+- `task_list_delete` — soft-delete a list and all active tasks in it.
 - `task_create` — add one task.
 - `task_add_many` — add several tasks transactionally.
 - `task_claim_next` — atomically claim the next eligible `todo` task.

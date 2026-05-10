@@ -102,6 +102,10 @@ export const taskReleaseExpiredClaimsSchema = z.object({
   list_id: z.string().optional(),
 });
 
+export const taskListDeleteSchema = z.object({
+  list_id: z.string(),
+});
+
 export const taskDeleteSchema = z.object({
   task_id: z.string(),
 });

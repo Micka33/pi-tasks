@@ -122,12 +122,19 @@ export interface ReorderTasksInput {
 export interface ReleaseExpiredClaimsInput {
     list_id?: string;
 }
+export interface DeleteTaskListInput {
+    list_id: string;
+}
 export interface DeleteTaskInput {
     task_id: string;
 }
 export interface TaskListWithTasks {
     list: TaskList;
     tasks: Task[];
+}
+export interface DeleteTaskListResult {
+    list: TaskList;
+    deleted_tasks: Task[];
 }
 export interface ClaimResult {
     task: Task | null;

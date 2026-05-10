@@ -65,6 +65,7 @@ Un agent peut être :
 | `task_list_create` | créer une nouvelle liste de tâches |
 | `task_lists_find` | retrouver des listes existantes par scope, visibilité ou propriétaire |
 | `task_list_get` | lire une liste et ses tâches dans l’ordre d’exécution |
+| `task_list_delete` | soft-delete une liste et toutes ses tâches actives |
 | `task_create` | ajouter une tâche unique |
 | `task_add_many` | ajouter plusieurs tâches en une fois |
 | `task_claim_next` | réclamer atomiquement la prochaine tâche `todo` |
@@ -111,6 +112,7 @@ Commandes utiles :
 - `/tasks <list_id>` affiche une vue détaillée lisible d’une liste et de ses tâches : id, agent, dates, description, notes et outcome ;
 - `/tasks <list_id>` propose l’autocomplétion des `list_id` visibles dans la TUI Pi ;
 - `/tasks <list_id> full` affiche le JSON complet ;
+- `/task-list-delete <list_id>` soft-delete une liste et ses tâches actives, avec autocomplétion des `list_id` visibles ;
 - `/task-widget` propose l’autocomplétion des actions `on`, `off`, `compact`, `full`, `refresh` ;
 
 Règles d’affichage :

@@ -61,6 +61,20 @@ export function registerPiTaskCommands(pi) {
             ctx.ui.notify(output, "info");
         },
     });
+    pi.registerCommand("task-list-delete", {
+        description: "Soft-delete a task list and all active tasks in it: /task-list-delete <list_id>",
+        handler: async (args, ctx) => {
+            const listId = args.trim();
+            if (!listId || /\s/.test(listId)) {
+                ctx.ui.notify("Usage: /task-list-delete <list_id>", "error");
+                return;
+            }
+            const output = await withOptionalBypass(ctx, "task-list-delete", (service, access) => {
+                return formatTaskListDeleteCommandOutput(service.deleteTaskList({ list_id: listId }, access));
+            });
+            ctx.ui.notify(output, "info");
+        },
+    });
 }
 export function formatTaskListsCommandOutput(lists, options = {}) {
     if (options.full)
@@ -68,6 +82,16 @@ export function formatTaskListsCommandOutput(lists, options = {}) {
     if (lists.length === 0)
         return "No visible task lists.";
     return lists.map((list) => `- name: ${list.name}\n  id: ${list.id}`).join("\n");
+}
+export function formatTaskListDeleteCommandOutput(result) {
+    const lines = [
+        "Deleted task list:",
+        `- name: ${result.list.name}`,
+        `  id: ${result.list.id}`,
+        `  deleted_at: ${result.list.deleted_at ?? "already deleted"}`,
+        `  active tasks deleted: ${result.deleted_tasks.length}`,
+    ];
+    return lines.join("\n");
 }
 export function formatTasksCommandOutput(data, actorAgentId) {
     const { list, tasks } = data;

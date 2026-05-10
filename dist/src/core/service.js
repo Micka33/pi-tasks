@@ -314,6 +314,27 @@ export class TaskService {
             return { released: this.releaseExpiredClaimsInternal(input, access, now) };
         });
     }
+    deleteTaskList(input, access) {
+        return withImmediateTransaction(this.db, () => {
+            const list = this.getTaskListForAccess(input.list_id, access, { includeDeleted: true });
+            if (list.deleted_at)
+                return { list, deleted_tasks: [] };
+            const now = this.nowIso();
+            const activeTasks = this.getTasksForList(list.id, { includeDeleted: false });
+            this.db
+                .prepare(`UPDATE tasks
+           SET deleted_at = ?, updated_at = ?, claimed_by_agent_id = NULL, claim_expires_at = NULL
+           WHERE list_id = ? AND deleted_at IS NULL`)
+                .run(now, now, list.id);
+            this.db
+                .prepare("UPDATE task_lists SET deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+                .run(now, now, list.id);
+            return {
+                list: this.getTaskListRow(list.id, { includeDeleted: true }),
+                deleted_tasks: activeTasks.map((task) => this.getTaskRow(task.id)),
+            };
+        });
+    }
     deleteTask(input, access) {
         return withImmediateTransaction(this.db, () => {
             const task = this.getTaskRow(input.task_id);

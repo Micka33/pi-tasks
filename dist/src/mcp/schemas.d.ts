@@ -96,6 +96,9 @@ export declare const taskReorderSchema: z.ZodObject<{
 export declare const taskReleaseExpiredClaimsSchema: z.ZodObject<{
     list_id: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
+export declare const taskListDeleteSchema: z.ZodObject<{
+    list_id: z.ZodString;
+}, z.core.$strip>;
 export declare const taskDeleteSchema: z.ZodObject<{
     task_id: z.ZodString;
 }, z.core.$strip>;

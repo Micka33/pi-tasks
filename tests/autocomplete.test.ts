@@ -21,6 +21,7 @@ test("extracts /tasks list-id autocomplete prefix", () => {
   assert.equal(extractTasksListIdPrefix("/tasks ex"), "ex");
   assert.equal(extractTasksListIdPrefix("/tasks example-list-2"), "example-list-2");
   assert.equal(extractTasksListIdPrefix("/tasks example-list-2 full"), undefined);
+  assert.equal(extractTasksListIdPrefix("/task-list-delete ex"), "ex");
   assert.equal(extractTasksListIdPrefix("/task-lists ex"), undefined);
 });
 

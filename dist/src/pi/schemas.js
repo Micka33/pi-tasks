@@ -81,6 +81,9 @@ export const TaskReorderParams = Type.Object({
 export const TaskReleaseExpiredClaimsParams = Type.Object({
     list_id: Type.Optional(Type.String()),
 });
+export const TaskListDeleteParams = Type.Object({
+    list_id: Type.String(),
+});
 export const TaskDeleteParams = Type.Object({
     task_id: Type.String(),
 });

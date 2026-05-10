@@ -2,7 +2,7 @@ import { ElicitResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { PrivateListAccessError, serializeError } from "../core/errors.js";
 import { resolveMcpAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
-import { taskAddManySchema, taskClaimNextSchema, taskClaimRefreshSchema, taskCreateSchema, taskDeleteSchema, taskListCreateSchema, taskListGetSchema, taskListsFindSchema, taskReleaseExpiredClaimsSchema, taskReorderSchema, taskUpdateSchema, } from "./schemas.js";
+import { taskAddManySchema, taskClaimNextSchema, taskClaimRefreshSchema, taskCreateSchema, taskDeleteSchema, taskListCreateSchema, taskListDeleteSchema, taskListGetSchema, taskListsFindSchema, taskReleaseExpiredClaimsSchema, taskReorderSchema, taskUpdateSchema, } from "./schemas.js";
 const COMMON_DESCRIPTION_SUFFIX = " Private task lists are strictly enforced. Use task_claim_next as the only normal way to enter in_progress; task_update rejects status=in_progress. Use task_claim_refresh for long-running claims. Use notes as task-local working memory for important context, choices in progress, blockers, and next steps. When closing a task as done/canceled, outcome is required and should summarize choices/decisions, actions taken, and final state obtained. When pausing with status=blocked, omit assigned_to_agent_id to keep responsibility on the pausing agent; pass assigned_to_agent_id:null to release it.";
 export function registerMcpTaskTools(server) {
     const definitions = [
@@ -28,6 +28,13 @@ export function registerMcpTaskTools(server) {
             inputSchema: taskListGetSchema,
             readOnly: true,
             run: (service, params, access) => service.getTaskList(params, access),
+        },
+        {
+            name: "task_list_delete",
+            title: "Delete Task List",
+            description: "Soft-delete a task list and all active tasks in it by setting deleted_at. Claims are cleared; rows remain in SQLite for audit/history." + COMMON_DESCRIPTION_SUFFIX,
+            inputSchema: taskListDeleteSchema,
+            run: (service, params, access) => service.deleteTaskList(params, access),
         },
         {
             name: "task_create",

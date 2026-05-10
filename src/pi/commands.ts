@@ -2,7 +2,7 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 import { resolvePiAgentId } from "../core/agent-id.js";
 import { PrivateListAccessError } from "../core/errors.js";
 import { TaskService } from "../core/service.js";
-import type { AccessOptions, Task, TaskList, TaskListWithTasks, TaskStatus } from "../core/types.js";
+import type { AccessOptions, DeleteTaskListResult, Task, TaskList, TaskListWithTasks, TaskStatus } from "../core/types.js";
 
 export function registerPiTaskCommands(pi: ExtensionAPI): void {
   pi.registerCommand("task-store", {
@@ -64,12 +64,39 @@ export function registerPiTaskCommands(pi: ExtensionAPI): void {
       ctx.ui.notify(output, "info");
     },
   });
+
+  pi.registerCommand("task-list-delete", {
+    description: "Soft-delete a task list and all active tasks in it: /task-list-delete <list_id>",
+    handler: async (args, ctx) => {
+      const listId = args.trim();
+      if (!listId || /\s/.test(listId)) {
+        ctx.ui.notify("Usage: /task-list-delete <list_id>", "error");
+        return;
+      }
+
+      const output = await withOptionalBypass(ctx, "task-list-delete", (service, access) => {
+        return formatTaskListDeleteCommandOutput(service.deleteTaskList({ list_id: listId }, access));
+      });
+      ctx.ui.notify(output, "info");
+    },
+  });
 }
 
 export function formatTaskListsCommandOutput(lists: TaskList[], options: { full?: boolean } = {}): string {
   if (options.full) return JSON.stringify(lists, null, 2);
   if (lists.length === 0) return "No visible task lists.";
   return lists.map((list) => `- name: ${list.name}\n  id: ${list.id}`).join("\n");
+}
+
+export function formatTaskListDeleteCommandOutput(result: DeleteTaskListResult): string {
+  const lines = [
+    "Deleted task list:",
+    `- name: ${result.list.name}`,
+    `  id: ${result.list.id}`,
+    `  deleted_at: ${result.list.deleted_at ?? "already deleted"}`,
+    `  active tasks deleted: ${result.deleted_tasks.length}`,
+  ];
+  return lines.join("\n");
 }
 
 export function formatTasksCommandOutput(data: TaskListWithTasks, actorAgentId: string): string {
