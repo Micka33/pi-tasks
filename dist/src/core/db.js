@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 export function resolveDbPath(cwd = process.cwd()) {
     const override = process.env.PI_TASKS_DB_PATH?.trim();
     if (override)
@@ -49,7 +49,7 @@ export function migrate(db) {
         assigned_to_agent_id TEXT,
         claimed_by_agent_id TEXT,
         claim_expires_at TEXT,
-        result TEXT,
+        outcome TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         started_at TEXT,
@@ -76,6 +76,15 @@ export function migrate(db) {
 
       PRAGMA user_version = ${SCHEMA_VERSION};
     `);
+    }
+    if (currentVersion === 1) {
+        const columns = db.prepare("PRAGMA table_info(tasks)").all();
+        const hasResult = columns.some((column) => column.name === "result");
+        const hasOutcome = columns.some((column) => column.name === "outcome");
+        if (hasResult && !hasOutcome) {
+            db.exec("ALTER TABLE tasks RENAME COLUMN result TO outcome");
+        }
+        db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
     }
 }
 export function withImmediateTransaction(db, fn) {

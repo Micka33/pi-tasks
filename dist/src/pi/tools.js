@@ -71,8 +71,8 @@ export function registerPiTaskTools(pi) {
         {
             name: "task_update",
             label: "Update Task",
-            description: "Update task fields or status. Setting status to in_progress is rejected; use task_claim_next instead. Setting status to blocked keeps assignment on the pausing agent unless assigned_to_agent_id:null is passed.",
-            promptSnippet: "Update a task result, notes, assignment, or terminal/blocking status.",
+            description: "Update task fields, outcome, or status. Setting status to in_progress is rejected; use task_claim_next instead. Setting status to blocked keeps assignment on the pausing agent unless assigned_to_agent_id:null is passed.",
+            promptSnippet: "Update a task outcome, notes, assignment, or terminal/blocking status.",
             parameters: TaskUpdateParams,
             run: (service, params, access) => service.updateTask(params, access),
         },

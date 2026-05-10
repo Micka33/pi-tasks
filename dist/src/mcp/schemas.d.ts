@@ -87,7 +87,7 @@ export declare const taskUpdateSchema: z.ZodObject<{
         canceled: "canceled";
     }>>;
     assigned_to_agent_id: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    result: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    outcome: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, z.core.$strip>;
 export declare const taskReorderSchema: z.ZodObject<{
     list_id: z.ZodString;

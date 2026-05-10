@@ -33,7 +33,7 @@ export interface Task {
   assigned_to_agent_id: string | null;
   claimed_by_agent_id: string | null;
   claim_expires_at: string | null;
-  result: string | null;
+  outcome: string | null;
   created_at: string;
   updated_at: string;
   started_at: string | null;
@@ -130,7 +130,7 @@ export interface UpdateTaskInput {
   notes?: string | null;
   status?: TaskStatus;
   assigned_to_agent_id?: string | null;
-  result?: string | null;
+  outcome?: string | null;
 }
 
 export interface ReorderTasksInput {

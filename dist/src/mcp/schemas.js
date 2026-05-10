@@ -4,6 +4,11 @@ const ScopeType = z.enum(SCOPE_TYPES);
 const Visibility = z.enum(VISIBILITIES);
 const TaskStatus = z.enum(TASK_STATUSES);
 const OptionalNullableString = z.string().nullable().optional();
+const TaskOutcome = z
+    .string()
+    .nullable()
+    .optional()
+    .describe("Final outcome, deliverable, or conclusion for a completed/canceled task. Formerly named result.");
 export const taskListCreateSchema = z.object({
     id: z.string().optional().describe("Optional stable list id. Generated when omitted."),
     name: z.string().min(1).describe("Human-readable task list name."),
@@ -69,7 +74,7 @@ export const taskUpdateSchema = z.object({
         .nullable()
         .optional()
         .describe("Set an assignee. When status=blocked, omit to assign the paused task to the current agent; pass null to release it."),
-    result: OptionalNullableString,
+    outcome: TaskOutcome,
 });
 export const taskReorderSchema = z.object({
     list_id: z.string(),

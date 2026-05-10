@@ -57,7 +57,7 @@ export declare const TaskUpdateParams: Type.TObject<{
     notes: Type.TOptional<Type.TUnion<[Type.TString, Type.TNull]>>;
     status: Type.TOptional<Type.TUnsafe<"todo" | "in_progress" | "blocked" | "done" | "canceled">>;
     assigned_to_agent_id: Type.TOptional<Type.TUnion<[Type.TString, Type.TNull]>>;
-    result: Type.TOptional<Type.TUnion<[Type.TString, Type.TNull]>>;
+    outcome: Type.TOptional<Type.TUnion<[Type.TString, Type.TNull]>>;
 }>;
 export declare const TaskReorderParams: Type.TObject<{
     list_id: Type.TString;

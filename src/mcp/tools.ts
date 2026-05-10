@@ -91,7 +91,7 @@ export function registerMcpTaskTools(server: McpServer): void {
     {
       name: "task_update",
       title: "Update Task",
-      description: "Update task fields or status. Setting status to in_progress is rejected; use task_claim_next instead. Setting status to blocked keeps assignment on the pausing agent unless assigned_to_agent_id:null is passed." + COMMON_DESCRIPTION_SUFFIX,
+      description: "Update task fields, outcome, or status. Setting status to in_progress is rejected; use task_claim_next instead. Setting status to blocked keeps assignment on the pausing agent unless assigned_to_agent_id:null is passed." + COMMON_DESCRIPTION_SUFFIX,
       inputSchema: taskUpdateSchema,
       run: (service, params, access) => service.updateTask(params, access),
     },

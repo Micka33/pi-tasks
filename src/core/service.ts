@@ -158,7 +158,7 @@ export class TaskService {
         .prepare(
           `INSERT INTO tasks
             (id, list_id, position, title, description, notes, status, assigned_to_agent_id, claimed_by_agent_id,
-             claim_expires_at, result, created_at, updated_at, started_at, completed_at, deleted_at)
+             claim_expires_at, outcome, created_at, updated_at, started_at, completed_at, deleted_at)
            VALUES (?, ?, ?, ?, ?, ?, 'todo', ?, NULL, NULL, NULL, ?, ?, NULL, NULL, NULL)`,
         )
         .run(
@@ -191,7 +191,7 @@ export class TaskService {
       const insert = this.db.prepare(
         `INSERT INTO tasks
           (id, list_id, position, title, description, notes, status, assigned_to_agent_id, claimed_by_agent_id,
-           claim_expires_at, result, created_at, updated_at, started_at, completed_at, deleted_at)
+           claim_expires_at, outcome, created_at, updated_at, started_at, completed_at, deleted_at)
          VALUES (?, ?, ?, ?, ?, ?, 'todo', ?, NULL, NULL, NULL, ?, ?, NULL, NULL, NULL)`,
       );
 
@@ -304,9 +304,9 @@ export class TaskService {
       }
 
       if (task.claimed_by_agent_id && task.claimed_by_agent_id !== access.actor.agentId) {
-        const protectedFields = input.status !== undefined || input.result !== undefined;
+        const protectedFields = input.status !== undefined || input.outcome !== undefined;
         if (protectedFields) {
-          throw new ClaimConflictError("Cannot complete or change result for a task claimed by another agent", {
+          throw new ClaimConflictError("Cannot complete or change outcome for a task claimed by another agent", {
             task_id: task.id,
             claimed_by_agent_id: task.claimed_by_agent_id,
             actor_agent_id: access.actor.agentId,
@@ -336,9 +336,9 @@ export class TaskService {
         sets.push("assigned_to_agent_id = ?");
         params.push(normalizeNullableString(input.assigned_to_agent_id));
       }
-      if (input.result !== undefined) {
-        sets.push("result = ?");
-        params.push(normalizeNullableString(input.result));
+      if (input.outcome !== undefined) {
+        sets.push("outcome = ?");
+        params.push(normalizeNullableString(input.outcome));
       }
       if (input.status !== undefined) {
         validateTaskStatus(input.status);
@@ -592,7 +592,7 @@ function rowToTask(row: Row): Task {
     assigned_to_agent_id: nullableStringField(row, "assigned_to_agent_id"),
     claimed_by_agent_id: nullableStringField(row, "claimed_by_agent_id"),
     claim_expires_at: nullableStringField(row, "claim_expires_at"),
-    result: nullableStringField(row, "result"),
+    outcome: nullableStringField(row, "outcome"),
     created_at: stringField(row, "created_at"),
     updated_at: stringField(row, "updated_at"),
     started_at: nullableStringField(row, "started_at"),

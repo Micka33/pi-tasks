@@ -52,7 +52,7 @@ Un agent peut être :
 | `assigned_to_agent_id` | agent auquel la tâche est réservée, optionnel |
 | `claimed_by_agent_id` | agent qui exécute actuellement la tâche |
 | `claim_expires_at` | date d’expiration du claim |
-| `result` | résultat produit à la fin de la tâche |
+| `outcome` | résultat final, livrable ou conclusion produit à la fin de la tâche ; utiliser `notes` pour le contexte en cours, `outcome` pour le résumé final |
 | `created_at` | date de création |
 | `updated_at` | date de dernière modification |
 | `started_at` | date de début d’exécution |
@@ -106,7 +106,8 @@ Le plugin Pi affiche un widget encadré au-dessus de l’éditeur quand des list
 Commandes utiles :
 - `/task-lists` affiche par défaut uniquement `name` et `id` pour retrouver facilement les identifiants de listes ;
 - `/task-lists full` affiche les métadonnées JSON complètes ;
-- `/tasks <list_id>` affiche une liste et ses tâches.
+- `/tasks <list_id>` affiche une vue détaillée lisible d’une liste et de ses tâches : id, agent, dates, description, notes et outcome ;
+- `/tasks <list_id> full` affiche le JSON complet ;
 
 Règles d’affichage :
 - les tâches de l’agent courant sont affichées en premier ;

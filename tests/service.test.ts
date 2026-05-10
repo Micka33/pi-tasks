@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -104,9 +105,9 @@ test("done update clears claim and sets completed_at", () => {
     assert.ok(claimed);
 
     now = new Date("2026-01-01T01:00:00.000Z");
-    const updated = service.updateTask({ task_id: claimed.id, status: "done", result: "ok" }, a);
+    const updated = service.updateTask({ task_id: claimed.id, status: "done", outcome: "ok" }, a);
     assert.equal(updated.status, "done");
-    assert.equal(updated.result, "ok");
+    assert.equal(updated.outcome, "ok");
     assert.equal(updated.claimed_by_agent_id, null);
     assert.equal(updated.claim_expires_at, null);
     assert.equal(updated.completed_at, "2026-01-01T01:00:00.000Z");
@@ -149,6 +150,64 @@ test("blocked update keeps responsibility on pausing agent unless explicitly rel
     assert.equal(released.claimed_by_agent_id, null);
     assert.equal(released.claim_expires_at, null);
 
+    service.close();
+  } finally {
+    cleanup();
+  }
+});
+
+test("schema migration renames result to outcome", () => {
+  const { dbPath, cleanup } = tmpDb();
+  try {
+    const db = new DatabaseSync(dbPath);
+    db.exec(`
+      CREATE TABLE task_lists (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        scope_type TEXT NOT NULL,
+        scope_key TEXT NOT NULL,
+        visibility TEXT NOT NULL,
+        owner_agent_id TEXT,
+        created_by_agent_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT
+      );
+      CREATE TABLE tasks (
+        id TEXT PRIMARY KEY,
+        list_id TEXT NOT NULL REFERENCES task_lists(id),
+        position INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        notes TEXT,
+        status TEXT NOT NULL,
+        assigned_to_agent_id TEXT,
+        claimed_by_agent_id TEXT,
+        claim_expires_at TEXT,
+        result TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        started_at TEXT,
+        completed_at TEXT,
+        deleted_at TEXT
+      );
+      CREATE TABLE private_access_events (
+        id TEXT PRIMARY KEY,
+        list_id TEXT NOT NULL REFERENCES task_lists(id),
+        actor_agent_id TEXT NOT NULL,
+        tool_name TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      INSERT INTO task_lists VALUES ('legacy', 'Legacy', 'workspace', '/repo', 'shared', NULL, 'agent-a', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', NULL);
+      INSERT INTO tasks VALUES ('legacy-task', 'legacy', 1, 'Legacy task', NULL, NULL, 'done', NULL, NULL, NULL, 'legacy result', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z', NULL, '2026-01-01T00:00:00.000Z', NULL);
+      PRAGMA user_version = 1;
+    `);
+    db.close();
+
+    const service = new TaskService({ dbPath });
+    const data = service.getTaskList({ list_id: "legacy" }, actor("agent-a"));
+    assert.equal(data.tasks[0]?.outcome, "legacy result");
     service.close();
   } finally {
     cleanup();

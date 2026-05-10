@@ -33,7 +33,7 @@ test("dashboard widget is framed and stays under Pi's 10-line widget limit", () 
     service.addManyTasks({ list_id: "example-list-1", tasks: [{ title: "analyser le besoin" }, { title: "proposer une solution" }] }, a);
     const done = service.claimNextTask({ list_id: "example-list-1" }, a).task;
     assert.ok(done);
-    service.updateTask({ task_id: done.id, status: "done", result: "ok" }, a);
+    service.updateTask({ task_id: done.id, status: "done", outcome: "ok" }, a);
     const blocked = service.claimNextTask({ list_id: "example-list-1" }, a).task;
     assert.ok(blocked);
     service.updateTask({ task_id: blocked.id, status: "blocked" }, a);
