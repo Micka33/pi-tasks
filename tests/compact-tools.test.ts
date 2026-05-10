@@ -296,6 +296,94 @@ test("compact tool display is concise for Pi while preserving full details separ
     formatCompactToolDisplay({ operation: "task_items.add_many", result: [{ position: 1, title: "One", description: "Only one" }] }),
     "✓ 1 tâche ajoutée\n#1 One — Only one",
   );
+
+  assert.equal(
+    formatCompactToolDisplay({
+      operation: "task_items.create",
+      result: { id: "created-task-id", position: 7, title: "Created", description: "with details", status: "todo" },
+    }),
+    "✓ Tâche créée: #7 Created — with details\n  status: todo · id: created-",
+  );
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_items.delete", result: { id: "deleted-task-id", position: 8, title: "Deleted", status: "todo" } }),
+    "✓ Tâche supprimée: #8 Deleted\n  status: todo · id: deleted-",
+  );
+  assert.equal(formatCompactToolDisplay({ operation: "task_items.reorder", result: [] }), "Aucune tâche réordonnée.");
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_items.reorder", result: [{ position: 1, id: "reorder-one", title: "One" }] }),
+    "✓ 1 tâche réordonnée\n  #  ID        TITLE\n• 1  reorder-  One",
+  );
+  const reordered = formatCompactToolDisplay({
+    operation: "task_items.reorder",
+    result: [
+      { position: 1, id: "reorder-one", title: "One" },
+      { position: 22, id: "reorder-two", title: "A reordered task title that is intentionally very long so it must be truncated before wrapping" },
+    ],
+  });
+  assert.equal(reordered.split("\n")[0], "✓ 2 tâches réordonnées");
+  assert.equal(reordered.split("\n")[2]?.startsWith("•  1  reorder-  One"), true);
+  assert.equal(reordered.split("\n")[3]?.endsWith("…"), true);
+
+  const realNow2 = Date.now;
+  Date.now = () => Date.parse("2026-01-01T00:00:00.000Z");
+  try {
+    assert.equal(
+      formatCompactToolDisplay({
+        operation: "task_claims.refresh",
+        result: { id: "refresh-task-id", position: 2, title: "Refresh", status: "in_progress", claim_expires_at: "2026-01-01T01:00:00.000Z" },
+      }),
+      "✓ Claim rafraîchi: #2 Refresh\n  status: in_progress · expires: ~1h · id: refresh-",
+    );
+  } finally {
+    Date.now = realNow2;
+  }
+  assert.equal(formatCompactToolDisplay({ operation: "task_claims.release_expired", result: {} }), "Aucun claim expiré à libérer.");
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_claims.release_expired", result: { released: [{ id: "released-one", position: 1, title: "Released one" }] } }),
+    "✓ 1 claim expiré libéré\n• #1 Released one · id: released",
+  );
+  assert.equal(
+    formatCompactToolDisplay({
+      operation: "task_claims.release_expired",
+      result: { released: [{ id: "released-one", position: 1, title: "Released one" }, { id: "released-two", position: 2, title: "Released two" }] },
+    }).split("\n")[0],
+    "✓ 2 claims expirés libérés",
+  );
+
+  assert.equal(formatCompactToolDisplay({ operation: "task_audit.get", result: [] }), "Private access audit\nAucun événement visible.");
+  const auditOne = formatCompactToolDisplay({
+    operation: "task_audit.get",
+    result: [{ created_at: "2026-01-01T00:30:00.000Z", list_id: "private-list", actor_agent_id: "agent-b", tool_name: "task_lists.get", reason: "User confirmed bypass" }],
+  });
+  assert.equal(auditOne.includes("Private access audit · 1 événement"), true);
+  assert.equal(auditOne.includes("reason: User confirmed bypass"), true);
+  const auditMany = formatCompactToolDisplay({
+    operation: "task_audit.get",
+    result: [
+      { created_at: "not-a-date", list_id: "list-1", actor_agent_id: "agent-1", tool_name: "task_lists.get", reason: 1 },
+      { created_at: null, list_id: "list-2", actor_agent_id: "agent-2", tool_name: "task_items.update", reason: "ok" },
+    ],
+  });
+  assert.equal(auditMany.includes("Private access audit · 2 événements"), true);
+  assert.equal(auditMany.includes("• ?"), true);
+
+  assert.equal(formatCompactToolDisplay({ operation: "task_help.all", result: {} }).startsWith("pi-tasks help\n• workflow"), true);
+  assert.equal(formatCompactToolDisplay({ operation: "task_help.schemas", result: {} }).includes("• task_items: create, add_many, update, reorder, delete"), true);
+  assert.equal(formatCompactToolDisplay({ operation: "task_help.examples", result: {} }), "pi-tasks examples\nAucun exemple disponible.");
+  assert.equal(formatCompactToolDisplay({ operation: "task_help.examples", result: { examples: [] } }), "pi-tasks examples\nAucun exemple disponible.");
+  assert.equal(
+    formatCompactToolDisplay({
+      operation: "task_help.examples",
+      result: { examples: [{ tool: "task_lists", input: { action: "find" } }, { tool: "bad", input: { action: 1 } }, { tool: "none" }] },
+    }),
+    "pi-tasks examples\n1. task_lists find\n2. bad ?\n3. none ?",
+  );
+
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_lists.create", result: { private_access_bypassed: true, result: { name: "Private", visibility: "private" } } }),
+    "⚠ Accès privé confirmé\n✓ Liste créée: Private · private",
+  );
+
   assert.equal(formatCompactToolDisplay({ operation: "unknown", result: 1 }), JSON.stringify({ operation: "unknown", result: 1 }, null, 2));
   assert.equal(formatCompactToolDisplay("plain"), JSON.stringify("plain", null, 2));
 });

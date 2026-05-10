@@ -155,7 +155,7 @@ Pi currently renders at most 10 widget lines. `pi-tasks` stays under that limit 
 - `task_audit` — `get` private-list bypass audit events visible to the current agent.
 - `task_help` — required reference tool for workflow rules, action schemas, and examples (`action`: `all`, `workflow`, `schemas`, or `examples`).
 
-Structured results are wrapped to make compact actions obvious in the model-visible tool content, Pi `details`, and MCP output. Pi renders common successful actions as short human-readable text via a UI renderer, without removing full ids or fields from the data available to agents/MCP:
+Structured results are wrapped to make compact actions obvious in the model-visible tool content, Pi `details`, and MCP output. Every compact `tool+action` combination has a dedicated short Pi UI renderer, without removing full ids or fields from the data available to agents/MCP:
 
 ```text
 ✓ 2 listes trouvées
@@ -172,6 +172,14 @@ todo 2 · run 1
 
 ▶ Tâche claimée: #1 Préparer le contexte
   status: in_progress · expires: ~2h · id: d4fb8a30
+
+✓ Claim rafraîchi: #1 Préparer le contexte
+  status: in_progress · expires: ~2h · id: d4fb8a30
+
+Private access audit · 1 événement
+  TIME                  LIST          ACTOR    TOOL
+• 2026-01-01 00:30:00Z  private-list  agent-b  task_lists.get
+  reason: User confirmed bypass
 ```
 
 Full structured envelope:
