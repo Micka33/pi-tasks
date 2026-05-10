@@ -12,13 +12,10 @@
     "agents"
   ],
   "files": [
-    "bin",
-    "dist/src",
-    "scripts",
-    "src",
-    "tests",
+    "bin/pi-tasks-mcp.js",
+    "dist",
     "README.md",
-    "pi-tasks.md"
+    "package-lock.json"
   ],
   "bin": {
     "pi-tasks-mcp": "bin/pi-tasks-mcp.js"
@@ -30,7 +27,8 @@
     "ci": "npm run typecheck && npm run coverage",
     "mcp": "npm run build && node dist/src/mcp/cli.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "prepack": "npm run build"
+    "prepack": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && npm run build:package",
+    "build:package": "tsc -p tsconfig.package.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -55,7 +53,7 @@
   },
   "pi": {
     "extensions": [
-      "./src/pi/index.ts"
+      "./dist/src/pi/index.js"
     ]
   },
   "repository": {

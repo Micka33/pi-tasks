@@ -97,7 +97,9 @@ jobs:
           fi
 
           npm access set status=public "$PACKAGE_NAME"
+          npm dist-tag add "$PACKAGE_NAME@$VERSION" latest
           npm view "$PACKAGE_NAME@$VERSION" version
+          npm view "$PACKAGE_NAME" dist-tags.latest
 
       - name: Create GitHub release
         shell: bash
@@ -127,3 +129,10 @@ jobs:
 
             gh "${args[@]}"
           fi
+
+      - name: Update latest git tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git tag -f latest "$(git rev-parse HEAD)"
+          git push --force origin refs/tags/latest
