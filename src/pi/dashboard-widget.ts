@@ -114,7 +114,7 @@ function refreshWidget(ctx: ExtensionContext, options: { notify?: boolean } = {}
         ctx.ui.notify(warning, "warning");
       }
 
-      const dashboard = buildDashboard(service, access);
+      const dashboard = buildDashboard(service, access, { includeDone: true });
       if (dashboard.lists.length === 0) {
         ctx.ui.setWidget(WIDGET_KEY, undefined);
         ctx.ui.setStatus(WIDGET_KEY, undefined);
