@@ -13,6 +13,8 @@ export type CompactToolName = (typeof COMPACT_TOOL_NAMES)[number];
 
 const TASK_ITEM_DISPLAY_LINE_MAX_CHARS = 96;
 const LIST_NAME_DISPLAY_MAX_CHARS = 80;
+const TASK_LIST_FIND_NAME_MAX_CHARS = 40;
+const TASK_LIST_FIND_ID_MAX_CHARS = 48;
 
 interface CompactRequest {
   action: string;
@@ -69,6 +71,8 @@ export function compactToolResultEnvelope(toolName: string, input: unknown, resu
 export function formatCompactToolDisplay(envelope: unknown): string {
   if (!isRecord(envelope)) return JSON.stringify(envelope, null, 2);
   if (envelope.operation === "task_lists.create" && isRecord(envelope.result)) return formatCreatedList(envelope.result);
+  if (envelope.operation === "task_lists.find" && Array.isArray(envelope.result)) return formatFoundTaskLists(envelope.result);
+  if (envelope.operation === "task_lists.delete" && isRecord(envelope.result)) return formatDeletedTaskList(envelope.result);
   if (envelope.operation === "task_items.add_many" && Array.isArray(envelope.result)) return formatAddedTasks(envelope.result);
   return JSON.stringify(envelope, null, 2);
 }
@@ -137,6 +141,35 @@ function runTaskAuditAction(service: TaskService, request: CompactRequest, acces
 
 function formatCreatedList(list: Record<string, unknown>): string {
   return `✓ Liste créée: ${truncateOneLine(String(list.name), LIST_NAME_DISPLAY_MAX_CHARS)} · ${String(list.visibility)}`;
+}
+
+function formatFoundTaskLists(lists: unknown[]): string {
+  const rows = lists.filter(isRecord).map((list) => ({
+    name: truncateOneLine(String(list.name), TASK_LIST_FIND_NAME_MAX_CHARS),
+    visibility: truncateOneLine(String(list.visibility), "private".length),
+    id: truncateOneLine(String(list.id), TASK_LIST_FIND_ID_MAX_CHARS),
+  }));
+  if (rows.length === 0) return "Aucune liste trouvée.";
+
+  const plural = rows.length > 1;
+  const nameWidth = Math.max(...rows.map((row) => row.name.length));
+  const visibilityWidth = "private".length;
+  return [
+    `✓ ${rows.length} liste${plural ? "s" : ""} trouvée${plural ? "s" : ""}`,
+    ...rows.map((row) => `• ${row.name.padEnd(nameWidth)}  ${row.visibility.padEnd(visibilityWidth)}  ${row.id}`),
+  ].join("\n");
+}
+
+function formatDeletedTaskList(result: Record<string, unknown>): string {
+  const list = result.list as Record<string, unknown>;
+  const deletedTasks = result.deleted_tasks as unknown[];
+  return `✓ Liste supprimée: ${truncateOneLine(String(list.name), LIST_NAME_DISPLAY_MAX_CHARS)} · ${String(list.visibility)} · ${formatDeletedTaskCount(deletedTasks.length)}`;
+}
+
+function formatDeletedTaskCount(count: number): string {
+  if (count === 0) return "aucune tâche active";
+  if (count === 1) return "1 tâche supprimée";
+  return `${count} tâches supprimées`;
 }
 
 function formatAddedTasks(tasks: unknown[]): string {

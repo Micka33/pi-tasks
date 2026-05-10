@@ -137,6 +137,34 @@ test("compact tool display is concise for Pi while preserving full details separ
     "✓ Liste créée: A list with spaces · private",
   );
 
+  assert.equal(formatCompactToolDisplay({ operation: "task_lists.find", result: [] }), "Aucune liste trouvée.");
+  const foundOne = formatCompactToolDisplay({ operation: "task_lists.find", result: [{ name: "One", visibility: "shared", id: "one" }] });
+  assert.equal(foundOne, "✓ 1 liste trouvée\n• One  shared   one");
+  const foundMany = formatCompactToolDisplay({
+    operation: "task_lists.find",
+    result: [
+      { name: "Short", visibility: "private", id: "list-one" },
+      { name: "Much longer list name", visibility: "shared", id: "list-two" },
+    ],
+  });
+  const foundRows = foundMany.split("\n");
+  assert.equal(foundRows[0], "✓ 2 listes trouvées");
+  assert.equal(foundRows[1]?.indexOf("private"), foundRows[2]?.indexOf("shared"));
+  assert.equal(foundRows[1]?.indexOf("list-one"), foundRows[2]?.indexOf("list-two"));
+
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_lists.delete", result: { list: { name: "Gone", visibility: "shared" }, deleted_tasks: [] } }),
+    "✓ Liste supprimée: Gone · shared · aucune tâche active",
+  );
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_lists.delete", result: { list: { name: "Private gone", visibility: "private" }, deleted_tasks: [{}] } }),
+    "✓ Liste supprimée: Private gone · private · 1 tâche supprimée",
+  );
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_lists.delete", result: { list: { name: "Gone with tasks", visibility: "shared" }, deleted_tasks: [{}, {}] } }),
+    "✓ Liste supprimée: Gone with tasks · shared · 2 tâches supprimées",
+  );
+
   const added = formatCompactToolDisplay({
     operation: "task_items.add_many",
     tool: "task_items",
