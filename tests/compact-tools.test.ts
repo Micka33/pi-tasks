@@ -154,6 +154,36 @@ test("compact tool display is concise for Pi while preserving full details separ
   assert.equal(foundRows[2]?.indexOf("list-one"), foundRows[3]?.indexOf("list-two"));
 
   assert.equal(
+    formatCompactToolDisplay({ operation: "task_lists.get", result: { list: { name: "Empty", visibility: "private" }, tasks: [] } }),
+    "Empty · private · aucune tâche",
+  );
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_lists.get", result: { list: { name: "One", visibility: "shared" }, tasks: [{ position: 1, status: "todo", id: "abc", title: "Only one" }] } }),
+    "One · shared · 1 tâche\ntodo 1\n\n  #  STATUS  ID   TITLE\n• 1  todo    abc  Only one",
+  );
+  const listedTasks = formatCompactToolDisplay({
+    operation: "task_lists.get",
+    result: {
+      list: { name: "Task flow demo 2", visibility: "shared" },
+      tasks: [
+        { position: 1, status: "in_progress", id: "d813c1f6-9ecf-4b6f-abb4-d56084e83368", title: "Préparer les données" },
+        { position: 2, status: "todo", id: "8d55eb15-e298-43d2-bd3b-b8403aa6e6c6", title: "Exécuter le traitement" },
+        { position: 10, status: "done", id: "c5fbf6bf-769e-4e54-b7a8-989685ce0770", title: "A very very very long title that must be truncated before it can wrap in Pi output rows" },
+        "ignored corrupt row",
+      ],
+    },
+  });
+  const listedRows = listedTasks.split("\n");
+  assert.equal(listedRows[0], "Task flow demo 2 · shared · 3 tâches");
+  assert.equal(listedRows[1], "todo 1 · run 1 · done 1");
+  assert.equal(listedRows[3], "   #  STATUS  ID        TITLE");
+  assert.equal(listedRows[4]?.startsWith("•  1  run     d813c1f6  Préparer les données"), true);
+  assert.equal(listedRows[5]?.startsWith("•  2  todo    8d55eb15  Exécuter le traitement"), true);
+  assert.equal(listedRows[6]?.startsWith("• 10  done    c5fbf6bf  A very very very long title"), true);
+  assert.equal(listedRows[6]?.endsWith("…"), true);
+  assert.equal(listedRows[6]!.length <= 96, true);
+
+  assert.equal(
     formatCompactToolDisplay({ operation: "task_lists.delete", result: { list: { name: "Gone", visibility: "shared" }, deleted_tasks: [] } }),
     "✓ Liste supprimée: Gone · shared · aucune tâche active",
   );

@@ -162,6 +162,14 @@ Structured results are wrapped to make compact actions obvious in `details` and 
   NAME            VISIBILITY  ID
 • Task flow demo  shared      task-flow-demo-20260510
 
+Task flow demo · shared · 3 tâches
+todo 2 · run 1
+
+  #  STATUS  ID        TITLE
+• 1  run     d813c1f6  Préparer le contexte
+• 2  todo    8d55eb15  Exécuter le traitement
+• 3  todo    c5fbf6bf  Contrôler le résultat
+
 ▶ Tâche claimée: #1 Préparer le contexte
   status: in_progress · expires: ~2h · id: d4fb8a30
 ```

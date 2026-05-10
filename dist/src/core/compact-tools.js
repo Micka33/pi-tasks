@@ -60,6 +60,8 @@ export function formatCompactToolDisplay(envelope) {
         return formatCreatedList(envelope.result);
     if (envelope.operation === "task_lists.find" && Array.isArray(envelope.result))
         return formatFoundTaskLists(envelope.result);
+    if (envelope.operation === "task_lists.get" && isRecord(envelope.result))
+        return formatTaskListWithTasks(envelope.result);
     if (envelope.operation === "task_lists.delete" && isRecord(envelope.result))
         return formatDeletedTaskList(envelope.result);
     if (envelope.operation === "task_help.workflow")
@@ -148,6 +150,59 @@ function formatFoundTaskLists(lists) {
         `  ${"NAME".padEnd(nameWidth)}  ${"VISIBILITY".padEnd(visibilityWidth)}  ID`,
         ...rows.map((row) => `• ${row.name.padEnd(nameWidth)}  ${row.visibility.padEnd(visibilityWidth)}  ${row.id}`),
     ].join("\n");
+}
+function formatTaskListWithTasks(result) {
+    const list = result.list;
+    const tasks = result.tasks.filter(isRecord);
+    const header = `${truncateOneLine(String(list.name), LIST_NAME_DISPLAY_MAX_CHARS)} · ${String(list.visibility)} · ${formatTaskCount(tasks.length)}`;
+    if (tasks.length === 0)
+        return header;
+    const rows = tasks.map((task) => ({
+        position: String(task.position),
+        status: formatListTaskStatus(task.status),
+        id: shortId(task.id),
+        title: normalizeOneLine(String(task.title)),
+    }));
+    const positionWidth = Math.max("#".length, ...rows.map((row) => row.position.length));
+    const statusWidth = Math.max("STATUS".length, ...rows.map((row) => row.status.length));
+    const idWidth = Math.max("ID".length, ...rows.map((row) => row.id.length));
+    return [
+        header,
+        formatListTaskStatusSummary(tasks),
+        "",
+        `  ${"#".padStart(positionWidth)}  ${"STATUS".padEnd(statusWidth)}  ${"ID".padEnd(idWidth)}  TITLE`,
+        ...rows.map((row) => formatTaskListRow(row, { positionWidth, statusWidth, idWidth })),
+    ].join("\n");
+}
+function formatTaskListRow(row, widths) {
+    const prefix = `• ${row.position.padStart(widths.positionWidth)}  ${row.status.padEnd(widths.statusWidth)}  ${row.id.padEnd(widths.idWidth)}  `;
+    return `${prefix}${truncateOneLine(row.title, TASK_ITEM_DISPLAY_LINE_MAX_CHARS - prefix.length)}`;
+}
+function formatListTaskStatusSummary(tasks) {
+    const counts = [
+        ["todo", countTasksWithStatus(tasks, "todo")],
+        ["run", countTasksWithStatus(tasks, "in_progress")],
+        ["blocked", countTasksWithStatus(tasks, "blocked")],
+        ["done", countTasksWithStatus(tasks, "done")],
+        ["canceled", countTasksWithStatus(tasks, "canceled")],
+    ];
+    return counts
+        .filter(([, count]) => count > 0)
+        .map(([label, count]) => `${label} ${count}`)
+        .join(" · ");
+}
+function countTasksWithStatus(tasks, status) {
+    return tasks.filter((task) => task.status === status).length;
+}
+function formatListTaskStatus(value) {
+    return value === "in_progress" ? "run" : String(value);
+}
+function formatTaskCount(count) {
+    if (count === 0)
+        return "aucune tâche";
+    if (count === 1)
+        return "1 tâche";
+    return `${count} tâches`;
 }
 function formatDeletedTaskList(result) {
     const list = result.list;
