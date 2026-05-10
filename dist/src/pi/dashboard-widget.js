@@ -241,7 +241,6 @@ function prioritizedMyTasks(dashboard) {
 }
 function prioritizedLists(dashboard) {
     return dashboard.lists
-        .filter((item) => item.totalActiveTasks > 0)
         .map((item, index) => ({ item, index }))
         .sort((a, b) => listScore(b.item) - listScore(a.item) || a.index - b.index)
         .map(({ item }) => item);
@@ -324,6 +323,8 @@ function formatMineCounts(counts) {
     return parts.join(" · ");
 }
 function formatListSummary(item) {
+    if (item.totalActiveTasks === 0)
+        return `${item.list.name} · aucune tâche`;
     return `${item.list.name} · ${formatCounts(item.counts)}`;
 }
 function formatCounts(counts) {

@@ -113,7 +113,7 @@ Example MCP config shape:
 
 ## Pi TUI widget
 
-The Pi extension shows a compact framed `pi-tasks` widget above the editor when visible task lists exist.
+The Pi extension shows a compact framed `pi-tasks` widget above the editor when visible task lists exist, including lists that currently contain no tasks.
 
 It summarizes visible lists, status counts, and tasks assigned to or claimed by the current Pi session. The widget puts the current agent's work first, uses readable counters such as `todo 2 · run 1 · blocked 0 · done 0`, and labels blocked tasks as `paused`. It never bypasses private-list protection automatically.
 

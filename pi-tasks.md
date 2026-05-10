@@ -104,7 +104,7 @@ Lorsqu’une tâche est mise en pause (`blocked`), elle reste assignée à l’a
 
 **Interface TUI Pi**
 
-Le plugin Pi affiche un widget encadré au-dessus de l’éditeur quand des listes visibles existent.
+Le plugin Pi affiche un widget encadré au-dessus de l’éditeur quand des listes visibles existent, y compris les listes qui ne contiennent encore aucune tâche.
 
 Commandes utiles :
 - `/task-lists` affiche par défaut uniquement `name` et `id` pour retrouver facilement les identifiants de listes ;

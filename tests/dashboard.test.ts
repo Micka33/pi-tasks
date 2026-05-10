@@ -21,6 +21,7 @@ test("dashboard summarizes visible lists and current-agent tasks without private
     const a = access("agent-a");
     const b = access("agent-b");
 
+    service.createTaskList({ id: "empty", name: "Empty", scope_type: "workspace", scope_key: "/repo", visibility: "shared" }, a);
     service.createTaskList({ id: "shared", name: "Shared", scope_type: "workspace", scope_key: "/repo", visibility: "shared" }, a);
     service.addManyTasks(
       {
@@ -43,8 +44,9 @@ test("dashboard summarizes visible lists and current-agent tasks without private
     service.createTask({ list_id: "private", title: "hidden" }, b);
 
     const dashboardA = buildDashboard(service, a);
-    assert.equal(dashboardA.lists.length, 1);
-    assert.equal(dashboardA.lists[0]?.list.id, "shared");
+    assert.equal(dashboardA.lists.length, 2);
+    assert.equal(dashboardA.lists.some((item) => item.list.id === "empty" && item.totalActiveTasks === 0), true);
+    assert.equal(dashboardA.lists.some((item) => item.list.id === "shared"), true);
     assert.equal(dashboardA.counts.todo, 2);
     assert.equal(dashboardA.counts.in_progress, 1);
     assert.equal(dashboardA.myCounts.todo, 1);
@@ -52,7 +54,7 @@ test("dashboard summarizes visible lists and current-agent tasks without private
     assert.equal(dashboardA.myTasks[0]?.task.title, "assigned");
 
     const dashboardB = buildDashboard(service, b);
-    assert.equal(dashboardB.lists.length, 2);
+    assert.equal(dashboardB.lists.length, 3);
     assert.equal(dashboardB.myCounts.in_progress, 1);
     assert.equal(dashboardB.myTasks.some((item) => item.task.id === claimed.id), true);
 

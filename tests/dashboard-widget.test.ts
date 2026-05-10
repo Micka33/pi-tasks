@@ -217,6 +217,11 @@ test("formatDashboard covers empty, hidden, long, duration, and status variants"
   assert.equal(formatDashboard(empty, "compact").some((line) => line.includes("aucune tâche visible")), true);
   assert.equal(formatDashboard(empty, "full").some((line) => line.includes("0 lists · 0 tasks")), true);
 
+  const onlyEmptyList = dashboardFromLists("short-agent", [{ list: widgetList("empty-only", "Empty Only"), tasks: [] }]);
+  assert.equal(formatDashboard(onlyEmptyList, "compact").some((line) => line.includes("Empty Only · aucune tâche")), true);
+  assert.equal(formatDashboard(onlyEmptyList, "full").some((line) => line.includes("Empty Only · aucune tâche")), true);
+  assert.equal(formatDashboard(onlyEmptyList, "compact").some((line) => line.includes("aucune tâche visible")), false);
+
   const agentId = "very-long-agent-id-for-widget";
   const listA = widgetList("list-a", "List A");
   const listB = widgetList("list-b", "List B");
