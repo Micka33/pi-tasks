@@ -96,7 +96,7 @@ jobs:
             npm publish "./release/$TARBALL" --access public --provenance
           fi
 
-          npm access public "$PACKAGE_NAME"
+          npm access set status=public "$PACKAGE_NAME"
           npm view "$PACKAGE_NAME@$VERSION" version
 
       - name: Create GitHub release
