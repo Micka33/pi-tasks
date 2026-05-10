@@ -139,7 +139,7 @@ test("compact tool display is concise for Pi while preserving full details separ
 
   assert.equal(formatCompactToolDisplay({ operation: "task_lists.find", result: [] }), "Aucune liste trouvée.");
   const foundOne = formatCompactToolDisplay({ operation: "task_lists.find", result: [{ name: "One", visibility: "shared", id: "one" }] });
-  assert.equal(foundOne, "✓ 1 liste trouvée\n• One  shared   one");
+  assert.equal(foundOne, "✓ 1 liste trouvée\n  NAME  VISIBILITY  ID\n• One   shared      one");
   const foundMany = formatCompactToolDisplay({
     operation: "task_lists.find",
     result: [
@@ -149,8 +149,9 @@ test("compact tool display is concise for Pi while preserving full details separ
   });
   const foundRows = foundMany.split("\n");
   assert.equal(foundRows[0], "✓ 2 listes trouvées");
-  assert.equal(foundRows[1]?.indexOf("private"), foundRows[2]?.indexOf("shared"));
-  assert.equal(foundRows[1]?.indexOf("list-one"), foundRows[2]?.indexOf("list-two"));
+  assert.equal(foundRows[1]?.includes("NAME"), true);
+  assert.equal(foundRows[2]?.indexOf("private"), foundRows[3]?.indexOf("shared"));
+  assert.equal(foundRows[2]?.indexOf("list-one"), foundRows[3]?.indexOf("list-two"));
 
   assert.equal(
     formatCompactToolDisplay({ operation: "task_lists.delete", result: { list: { name: "Gone", visibility: "shared" }, deleted_tasks: [] } }),
@@ -163,6 +164,86 @@ test("compact tool display is concise for Pi while preserving full details separ
   assert.equal(
     formatCompactToolDisplay({ operation: "task_lists.delete", result: { list: { name: "Gone with tasks", visibility: "shared" }, deleted_tasks: [{}, {}] } }),
     "✓ Liste supprimée: Gone with tasks · shared · 2 tâches supprimées",
+  );
+
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_help.workflow", result: { workflow: ["ignored verbose workflow"] } }),
+    [
+      "pi-tasks workflow",
+      "1. Trouver/créer une liste: task_lists find/create",
+      "2. Ajouter des tâches: task_items create/add_many",
+      "3. Démarrer une tâche: task_claims claim_next",
+      "4. Écrire la mémoire locale: task_items update notes",
+      "5. Terminer: task_items update status=done + outcome",
+    ].join("\n"),
+  );
+
+  const realNow = Date.now;
+  Date.now = () => Date.parse("2026-01-01T00:00:00.000Z");
+  try {
+    assert.equal(formatCompactToolDisplay({ operation: "task_claims.claim_next", result: { task: null } }), "Aucune tâche disponible à claimer.");
+    assert.equal(
+      formatCompactToolDisplay({
+        operation: "task_claims.claim_next",
+        result: { task: { id: "123456789abcdef", position: 2, title: "Claim me", status: "in_progress", claim_expires_at: "2026-01-01T02:00:00.000Z" } },
+      }),
+      "▶ Tâche claimée: #2 Claim me\n  status: in_progress · expires: ~2h · id: 12345678",
+    );
+    assert.equal(
+      formatCompactToolDisplay({
+        operation: "task_claims.claim_next",
+        result: { task: { id: "short", position: 3, title: "Soon", status: "in_progress", claim_expires_at: "2026-01-01T00:30:00.000Z" } },
+      }).includes("expires: ~30m · id: short"),
+      true,
+    );
+    assert.equal(
+      formatCompactToolDisplay({
+        operation: "task_claims.claim_next",
+        result: { task: { id: "expired", position: 4, title: "Expired", status: "in_progress", claim_expires_at: "2025-12-31T23:59:00.000Z" } },
+      }).includes("expires: expired"),
+      true,
+    );
+    assert.equal(
+      formatCompactToolDisplay({
+        operation: "task_claims.claim_next",
+        result: { task: { id: "invalid", position: 5, title: "Invalid", status: "in_progress", claim_expires_at: "not-a-date" } },
+      }).includes("expires: ?"),
+      true,
+    );
+    assert.equal(
+      formatCompactToolDisplay({
+        operation: "task_claims.claim_next",
+        result: { task: { id: "missing", position: 6, title: "Missing", status: "in_progress", claim_expires_at: null } },
+      }).includes("expires: ?"),
+      true,
+    );
+  } finally {
+    Date.now = realNow;
+  }
+
+  assert.equal(
+    formatCompactToolDisplay({
+      operation: "task_items.update",
+      result: { id: "abcdef123456", position: 1, title: "Updated", status: "in_progress", notes: "line one\nline two", outcome: null },
+    }),
+    "✓ Tâche mise à jour: #1 Updated\n  status: in_progress · id: abcdef12\n  notes: line one line two",
+  );
+  assert.equal(
+    formatCompactToolDisplay({
+      operation: "task_items.update",
+      result: { id: "done-task", position: 2, title: "Done", status: "done", notes: "", outcome: "Finished with a concise final outcome." },
+    }),
+    "✓ Tâche terminée: #2 Done\n  status: done · id: done-tas\n  outcome: Finished with a concise final outcome.",
+  );
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_items.update", result: { id: "blocked-task", position: 3, title: "Blocked", status: "blocked", notes: "Waiting", outcome: null } }).startsWith(
+      "⏸ Tâche bloquée: #3 Blocked",
+    ),
+    true,
+  );
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_items.update", result: { id: "canceled-task", position: 4, title: "Canceled", status: "canceled", notes: null, outcome: null } }),
+    "✕ Tâche annulée: #4 Canceled\n  status: canceled · id: canceled",
   );
 
   const added = formatCompactToolDisplay({

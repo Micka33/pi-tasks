@@ -6,6 +6,7 @@ export const TASK_CLAIM_ACTIONS = ["claim_next", "refresh", "release_expired"];
 export const TASK_AUDIT_ACTIONS = ["get"];
 export const TASK_HELP_ACTIONS = ["all", "workflow", "schemas", "examples"];
 const TASK_ITEM_DISPLAY_LINE_MAX_CHARS = 96;
+const TASK_TEXT_DISPLAY_MAX_CHARS = 96;
 const LIST_NAME_DISPLAY_MAX_CHARS = 80;
 const TASK_LIST_FIND_NAME_MAX_CHARS = 40;
 const TASK_LIST_FIND_ID_MAX_CHARS = 48;
@@ -61,8 +62,14 @@ export function formatCompactToolDisplay(envelope) {
         return formatFoundTaskLists(envelope.result);
     if (envelope.operation === "task_lists.delete" && isRecord(envelope.result))
         return formatDeletedTaskList(envelope.result);
+    if (envelope.operation === "task_help.workflow")
+        return formatWorkflowHelp();
+    if (envelope.operation === "task_claims.claim_next" && isRecord(envelope.result))
+        return formatClaimNext(envelope.result);
     if (envelope.operation === "task_items.add_many" && Array.isArray(envelope.result))
         return formatAddedTasks(envelope.result);
+    if (envelope.operation === "task_items.update" && isRecord(envelope.result))
+        return formatUpdatedTask(envelope.result);
     return JSON.stringify(envelope, null, 2);
 }
 export function getTaskHelp(input) {
@@ -134,10 +141,11 @@ function formatFoundTaskLists(lists) {
     if (rows.length === 0)
         return "Aucune liste trouvée.";
     const plural = rows.length > 1;
-    const nameWidth = Math.max(...rows.map((row) => row.name.length));
-    const visibilityWidth = "private".length;
+    const nameWidth = Math.max("NAME".length, ...rows.map((row) => row.name.length));
+    const visibilityWidth = "VISIBILITY".length;
     return [
         `✓ ${rows.length} liste${plural ? "s" : ""} trouvée${plural ? "s" : ""}`,
+        `  ${"NAME".padEnd(nameWidth)}  ${"VISIBILITY".padEnd(visibilityWidth)}  ID`,
         ...rows.map((row) => `• ${row.name.padEnd(nameWidth)}  ${row.visibility.padEnd(visibilityWidth)}  ${row.id}`),
     ].join("\n");
 }
@@ -152,6 +160,58 @@ function formatDeletedTaskCount(count) {
     if (count === 1)
         return "1 tâche supprimée";
     return `${count} tâches supprimées`;
+}
+function formatWorkflowHelp() {
+    return [
+        "pi-tasks workflow",
+        "1. Trouver/créer une liste: task_lists find/create",
+        "2. Ajouter des tâches: task_items create/add_many",
+        "3. Démarrer une tâche: task_claims claim_next",
+        "4. Écrire la mémoire locale: task_items update notes",
+        "5. Terminer: task_items update status=done + outcome",
+    ].join("\n");
+}
+function formatClaimNext(result) {
+    if (!isRecord(result.task))
+        return "Aucune tâche disponible à claimer.";
+    const task = result.task;
+    return [
+        `▶ Tâche claimée: ${formatTaskReference(task)}`,
+        `  status: ${String(task.status)} · expires: ${formatExpiry(task.claim_expires_at)} · id: ${shortId(task.id)}`,
+    ].join("\n");
+}
+function formatUpdatedTask(task) {
+    const status = String(task.status);
+    const prefixByStatus = {
+        blocked: "⏸ Tâche bloquée",
+        canceled: "✕ Tâche annulée",
+        done: "✓ Tâche terminée",
+    };
+    const lines = [`${prefixByStatus[status] ?? "✓ Tâche mise à jour"}: ${formatTaskReference(task)}`, `  status: ${status} · id: ${shortId(task.id)}`];
+    if (typeof task.notes === "string" && task.notes.trim().length > 0)
+        lines.push(`  notes: ${truncateOneLine(task.notes, TASK_TEXT_DISPLAY_MAX_CHARS)}`);
+    if (typeof task.outcome === "string" && task.outcome.trim().length > 0)
+        lines.push(`  outcome: ${truncateOneLine(task.outcome, TASK_TEXT_DISPLAY_MAX_CHARS)}`);
+    return lines.join("\n");
+}
+function formatTaskReference(task) {
+    return truncateOneLine(`#${String(task.position)} ${String(task.title)}`, TASK_ITEM_DISPLAY_LINE_MAX_CHARS);
+}
+function formatExpiry(value) {
+    if (typeof value !== "string")
+        return "?";
+    const ms = Date.parse(value) - Date.now();
+    if (!Number.isFinite(ms))
+        return "?";
+    if (ms <= 0)
+        return "expired";
+    const minutes = Math.ceil(ms / 60_000);
+    if (minutes < 60)
+        return `~${minutes}m`;
+    return `~${Math.round(minutes / 60)}h`;
+}
+function shortId(value) {
+    return typeof value === "string" && value.length > 8 ? value.slice(0, 8) : String(value);
 }
 function formatAddedTasks(tasks) {
     const plural = tasks.length > 1;

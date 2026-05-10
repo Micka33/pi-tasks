@@ -72,6 +72,8 @@ Chaque outil prend un `action` et, sauf `task_help`, un objet `params` spécifiq
 
 `task_help` est l’outil de référence obligatoire pour retrouver les règles de workflow, les schémas de `params` par action et des exemples.
 
+Dans Pi, les actions courantes affichent un résumé humain compact (`task_lists.find` avec colonnes alignées, `task_claims.claim_next`, `task_items.update`, etc.) tandis que le résultat structuré complet reste disponible dans `details`.
+
 **Workflow Agent Standard**
 
 1. L’agent cherche une liste existante avec `task_lists` + `action = find`.

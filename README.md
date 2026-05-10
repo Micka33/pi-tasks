@@ -155,7 +155,18 @@ Pi currently renders at most 10 widget lines. `pi-tasks` stays under that limit 
 - `task_audit` — `get` private-list bypass audit events visible to the current agent.
 - `task_help` — required reference tool for workflow rules, action schemas, and examples (`action`: `all`, `workflow`, `schemas`, or `examples`).
 
-Tool results are wrapped to make compact actions obvious in Pi/MCP output:
+Structured results are wrapped to make compact actions obvious in `details` and MCP output. Pi renders common successful actions as short human-readable text while keeping the full envelope in `details`:
+
+```text
+✓ 2 listes trouvées
+  NAME            VISIBILITY  ID
+• Task flow demo  shared      task-flow-demo-20260510
+
+▶ Tâche claimée: #1 Préparer le contexte
+  status: in_progress · expires: ~2h · id: d4fb8a30
+```
+
+Full structured envelope:
 
 ```json
 {
