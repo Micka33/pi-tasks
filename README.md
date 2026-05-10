@@ -153,3 +153,14 @@ npm test
 ```
 
 The test suite covers SQLite persistence, claim uniqueness, claim refresh, soft-delete, private-list enforcement, and status rules.
+
+## Releases
+
+A GitHub Release is created automatically when a semver tag is pushed. The package version used in the release artifact is derived from the tag.
+
+```bash
+git tag -a v0.1.1 -m "v0.1.1"
+git push origin v0.1.1
+```
+
+The workflow builds, tests, runs `npm pack`, uploads the `.tgz` artifact, and uploads its SHA256 checksum.
