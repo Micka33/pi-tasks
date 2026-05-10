@@ -1,5 +1,5 @@
 node_modules/
-dist/tests/
+dist/
 .DS_Store
 .env
 .pi/pi-tasks/*.sqlite

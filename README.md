@@ -251,4 +251,4 @@ git tag -a v0.1.1 -m "v0.1.1"
 git push origin v0.1.1
 ```
 
-The workflow reads Node.js from `.node-version`, builds, tests, runs `npm pack`, uploads the `.tgz` artifact, and uploads its SHA256 checksum.
+The workflow reads Node.js from `.node-version`, builds `dist/` on the runner, tests, runs `npm pack`, uploads the `.tgz` artifact, and uploads its SHA256 checksum. `dist/` is intentionally ignored by git; release artifacts include the generated `dist/src` files from the build.

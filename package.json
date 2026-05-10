@@ -28,7 +28,7 @@
     "test": "npm run build && node --test dist/tests/*.test.js",
     "coverage": "node scripts/check-coverage.mjs",
     "ci": "npm run typecheck && npm run coverage",
-    "mcp": "npm run build && node dist/mcp/cli.js",
+    "mcp": "npm run build && node dist/src/mcp/cli.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
