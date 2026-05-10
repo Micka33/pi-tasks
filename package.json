@@ -1,5 +1,5 @@
 {
-  "name": "pi-tasks",
+  "name": "@mackor/pi-tasks",
   "version": "0.1.0",
   "description": "Persistent shared task lists for Pi agents and MCP clients.",
   "type": "module",

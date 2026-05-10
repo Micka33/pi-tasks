@@ -20,19 +20,19 @@ The product specification is kept in [`pi-tasks.md`](./pi-tasks.md).
 From npm, pinned to a released version:
 
 ```bash
-pi install npm:pi-tasks@1.0.0
+pi install npm:@mackor/pi-tasks@latest
 ```
 
 For project-local installation:
 
 ```bash
-pi install -l npm:pi-tasks@1.0.0
+pi install -l npm:@mackor/pi-tasks@latest
 ```
 
 From this repository instead of npm:
 
 ```bash
-pi install git:git@github.com:Micka33/pi-tasks.git@v1.0.0
+pi install git:git@github.com:Micka33/pi-tasks.git@v0.0.1
 ```
 
 During development:
@@ -250,11 +250,11 @@ The test suite covers SQLite persistence, claim uniqueness, claim refresh, soft-
 
 ## Releases
 
-A GitHub Release is created automatically when a semver tag is pushed. The package version used in the release artifact is derived from the tag.
+A GitHub Release and npm publication are created automatically when a semver tag is pushed. The package version used in npm and in the release artifact is derived from the tag, so releasing does not require committing a package version bump.
 
 ```bash
-git tag -a v0.1.1 -m "v0.1.1"
-git push origin v0.1.1
+git tag -a v0.0.1 -m "pi-tasks 0.0.1"
+git push origin v0.0.1
 ```
 
-The workflow reads Node.js from `.node-version`, builds `dist/` on the runner, tests, runs `npm pack`, publishes that exact tarball to npm using the `NPM_ACCESS_TOKEN` GitHub secret, then uploads the `.tgz` artifact and its SHA256 checksum to the GitHub Release. `NPM_ACCESS_TOKEN` must be an npm token allowed to publish `pi-tasks` (for accounts with 2FA, use an automation/granular publish token). `dist/` is intentionally ignored by git; release artifacts include the generated `dist/src` files from the build.
+The workflow reads Node.js from `.node-version`, builds `dist/` on the runner, tests, runs `npm pack`, publishes that exact tarball to npm as `@mackor/pi-tasks` using the `NPM_ACCESS_TOKEN` GitHub secret, then uploads the `.tgz` artifact and its SHA256 checksum to the GitHub Release. `NPM_ACCESS_TOKEN` must be an npm token allowed to publish packages in the `mackor` organization (for accounts with 2FA, use an automation/granular publish token). `dist/` is intentionally ignored by git; release artifacts include the generated `dist/src` files from the build.
