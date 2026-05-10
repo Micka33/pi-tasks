@@ -1,5 +1,5 @@
 import { ElicitResultSchema } from "@modelcontextprotocol/sdk/types.js";
-import { compactToolCallName, dispatchCompactTaskTool } from "../core/compact-tools.js";
+import { compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool } from "../core/compact-tools.js";
 import { PrivateListAccessError, serializeError } from "../core/errors.js";
 import { resolveMcpAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
@@ -56,7 +56,7 @@ export function registerMcpTaskTools(server) {
 async function executeMcpTaskTool(server, definition, params, extra) {
     try {
         const result = await runWithService(definition, params, extra);
-        return successResult(result);
+        return successResult(compactToolResultEnvelope(definition.name, params, result));
     }
     catch (error) {
         if (error instanceof PrivateListAccessError) {
@@ -68,7 +68,7 @@ async function executeMcpTaskTool(server, definition, params, extra) {
                         toolName: callName,
                         reason: `User confirmed private-list bypass via MCP elicitation for ${callName}`,
                     });
-                    return successResult({ private_access_bypassed: true, result });
+                    return successResult(compactToolResultEnvelope(definition.name, params, { private_access_bypassed: true, result }));
                 }
                 catch (retryError) {
                     return errorToolResult(retryError);

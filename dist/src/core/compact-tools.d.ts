@@ -8,5 +8,7 @@ export declare const TASK_AUDIT_ACTIONS: readonly ["get"];
 export declare const TASK_HELP_ACTIONS: readonly ["all", "workflow", "schemas", "examples"];
 export type CompactToolName = (typeof COMPACT_TOOL_NAMES)[number];
 export declare function dispatchCompactTaskTool(service: TaskService, toolName: string, input: unknown, access: AccessOptions): unknown;
+export declare function compactToolAction(toolName: string, input: unknown): string | undefined;
 export declare function compactToolCallName(toolName: string, input: unknown): string;
+export declare function compactToolResultEnvelope(toolName: string, input: unknown, result: unknown): Record<string, unknown>;
 export declare function getTaskHelp(input?: unknown): Record<string, unknown>;

@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult, ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
 import { ElicitResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
-import { compactToolCallName, dispatchCompactTaskTool } from "../core/compact-tools.js";
+import { compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool } from "../core/compact-tools.js";
 import { PrivateListAccessError, serializeError } from "../core/errors.js";
 import { resolveMcpAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
@@ -84,7 +84,7 @@ async function executeMcpTaskTool(
 ): Promise<CallToolResult> {
   try {
     const result = await runWithService(definition, params, extra);
-    return successResult(result);
+    return successResult(compactToolResultEnvelope(definition.name, params, result));
   } catch (error) {
     if (error instanceof PrivateListAccessError) {
       const bypassed = await maybeElicitPrivateBypass(server, definition, params, error, extra);
@@ -95,7 +95,7 @@ async function executeMcpTaskTool(
             toolName: callName,
             reason: `User confirmed private-list bypass via MCP elicitation for ${callName}`,
           });
-          return successResult({ private_access_bypassed: true, result });
+          return successResult(compactToolResultEnvelope(definition.name, params, { private_access_bypassed: true, result }));
         } catch (retryError) {
           return errorToolResult(retryError);
         }

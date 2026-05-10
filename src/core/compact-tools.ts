@@ -39,9 +39,28 @@ export function dispatchCompactTaskTool(
   }
 }
 
+export function compactToolAction(toolName: string, input: unknown): string | undefined {
+  if (toolName === "task_help" && input === undefined) return "all";
+  if (!isRecord(input)) return undefined;
+  if (toolName === "task_help" && input.action === undefined) return "all";
+  if (typeof input.action !== "string") return undefined;
+  if (toolName === "task_help" && input.action.trim().length === 0) return undefined;
+  return input.action;
+}
+
 export function compactToolCallName(toolName: string, input: unknown): string {
-  if (!isRecord(input) || typeof input.action !== "string") return toolName;
-  return `${toolName}.${input.action}`;
+  const action = compactToolAction(toolName, input);
+  return action === undefined ? toolName : `${toolName}.${action}`;
+}
+
+export function compactToolResultEnvelope(toolName: string, input: unknown, result: unknown): Record<string, unknown> {
+  const action = compactToolAction(toolName, input);
+  return {
+    operation: compactToolCallName(toolName, input),
+    tool: toolName,
+    ...(action === undefined ? {} : { action }),
+    result,
+  };
 }
 
 export function getTaskHelp(input?: unknown): Record<string, unknown> {

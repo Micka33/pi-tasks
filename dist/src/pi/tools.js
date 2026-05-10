@@ -1,4 +1,4 @@
-import { compactToolCallName, dispatchCompactTaskTool } from "../core/compact-tools.js";
+import { compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool } from "../core/compact-tools.js";
 import { PrivateListAccessError, serializeError } from "../core/errors.js";
 import { resolvePiAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
@@ -64,7 +64,7 @@ export function registerPiTaskTools(pi) {
 async function executePiTaskTool(tool, params, ctx) {
     try {
         const result = await runWithService(tool, params, ctx);
-        return successResult(result);
+        return successResult(compactToolResultEnvelope(tool.name, params, result));
     }
     catch (error) {
         if (error instanceof PrivateListAccessError && ctx.hasUI) {
@@ -81,7 +81,7 @@ async function executePiTaskTool(tool, params, ctx) {
                     reason: `User confirmed private-list bypass in Pi UI for ${callName}`,
                     toolName: callName,
                 });
-                return successResult({ private_access_bypassed: true, result });
+                return successResult(compactToolResultEnvelope(tool.name, params, { private_access_bypassed: true, result }));
             }
         }
         throw error;

@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { compactToolCallName, dispatchCompactTaskTool, getTaskHelp } from "../src/core/compact-tools.js";
+import { compactToolAction, compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool, getTaskHelp } from "../src/core/compact-tools.js";
 import { PrivateListAccessError, ValidationError } from "../src/core/errors.js";
 import { TaskService } from "../src/core/service.js";
 import type { AccessOptions } from "../src/core/types.js";
@@ -132,9 +132,27 @@ test("compact task tools validate tool names, actions, params, and help input", 
     const service = new TaskService({ dbPath });
     const a = access("agent-a");
 
+    assert.equal(compactToolAction("task_items", { action: "add_many" }), "add_many");
+    assert.equal(compactToolAction("task_help", undefined), "all");
+    assert.equal(compactToolAction("task_help", {}), "all");
+    assert.equal(compactToolAction("task_help", { action: "" }), undefined);
+    assert.equal(compactToolAction("task_lists", { action: 1 }), undefined);
     assert.equal(compactToolCallName("task_lists", { action: "get" }), "task_lists.get");
+    assert.equal(compactToolCallName("task_help", undefined), "task_help.all");
+    assert.equal(compactToolCallName("task_help", {}), "task_help.all");
     assert.equal(compactToolCallName("task_lists", { action: 1 }), "task_lists");
     assert.equal(compactToolCallName("task_lists", null), "task_lists");
+    assert.deepEqual(compactToolResultEnvelope("task_items", { action: "add_many" }, ["x"]), {
+      operation: "task_items.add_many",
+      tool: "task_items",
+      action: "add_many",
+      result: ["x"],
+    });
+    assert.deepEqual(compactToolResultEnvelope("task_lists", {}, "ok"), {
+      operation: "task_lists",
+      tool: "task_lists",
+      result: "ok",
+    });
 
     assert.throws(() => dispatchCompactTaskTool(service, "unknown", { action: "get" }, a), ValidationError);
     assert.throws(() => dispatchCompactTaskTool(service, "task_lists", null, a), ValidationError);

@@ -22,10 +22,31 @@ export function dispatchCompactTaskTool(service, toolName, input, access) {
             throw new ValidationError(`Unknown compact pi-tasks tool: ${toolName}`, { tool_name: toolName, allowed: COMPACT_TOOL_NAMES });
     }
 }
+export function compactToolAction(toolName, input) {
+    if (toolName === "task_help" && input === undefined)
+        return "all";
+    if (!isRecord(input))
+        return undefined;
+    if (toolName === "task_help" && input.action === undefined)
+        return "all";
+    if (typeof input.action !== "string")
+        return undefined;
+    if (toolName === "task_help" && input.action.trim().length === 0)
+        return undefined;
+    return input.action;
+}
 export function compactToolCallName(toolName, input) {
-    if (!isRecord(input) || typeof input.action !== "string")
-        return toolName;
-    return `${toolName}.${input.action}`;
+    const action = compactToolAction(toolName, input);
+    return action === undefined ? toolName : `${toolName}.${action}`;
+}
+export function compactToolResultEnvelope(toolName, input, result) {
+    const action = compactToolAction(toolName, input);
+    return {
+        operation: compactToolCallName(toolName, input),
+        tool: toolName,
+        ...(action === undefined ? {} : { action }),
+        result,
+    };
 }
 export function getTaskHelp(input) {
     const rawAction = input === undefined ? undefined : readOptionalAction(input);
