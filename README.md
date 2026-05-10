@@ -127,6 +127,14 @@ Control it with:
 /task-widget refresh
 ```
 
+Useful commands:
+
+```text
+/task-lists        # compact: only name + id
+/task-lists full   # complete JSON metadata
+/tasks <list_id>   # show one list and its tasks
+```
+
 The widget refreshes on session start, after `task_*` tool calls, and periodically every 10 seconds to catch updates made by other agents or MCP clients.
 
 Pi currently renders at most 10 widget lines. `pi-tasks` stays under that limit itself to avoid Pi's generic `widget truncated` message: compact mode uses up to 8 lines, full mode uses up to 10 lines, and hidden content is summarized with explicit `… masquée(s)` lines plus `/tasks <list_id>` hints.

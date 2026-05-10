@@ -103,6 +103,11 @@ Lorsqu’une tâche est mise en pause (`blocked`), elle reste assignée à l’a
 
 Le plugin Pi affiche un widget encadré au-dessus de l’éditeur quand des listes visibles existent.
 
+Commandes utiles :
+- `/task-lists` affiche par défaut uniquement `name` et `id` pour retrouver facilement les identifiants de listes ;
+- `/task-lists full` affiche les métadonnées JSON complètes ;
+- `/tasks <list_id>` affiche une liste et ses tâches.
+
 Règles d’affichage :
 - les tâches de l’agent courant sont affichées en premier ;
 - les compteurs de listes utilisent un format lisible : `todo N · run N · blocked N · done N` ;

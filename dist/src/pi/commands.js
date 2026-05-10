@@ -26,14 +26,20 @@ export function registerPiTaskCommands(pi) {
         },
     });
     pi.registerCommand("task-lists", {
-        description: "Show task lists visible to this Pi session",
-        handler: async (_args, ctx) => {
+        description: "Show visible task lists. Default: name/id only. Use /task-lists full for complete JSON.",
+        handler: async (args, ctx) => {
+            const arg = args.trim().toLowerCase();
+            const full = arg === "full" || arg === "--full" || arg === "-f";
+            if (arg && !full) {
+                ctx.ui.notify("Usage: /task-lists [full]", "error");
+                return;
+            }
             const { service, access, warning } = openForCommand(ctx);
             try {
                 if (warning)
                     ctx.ui.notify(warning, "warning");
                 const lists = service.findTaskLists({}, access);
-                ctx.ui.notify(JSON.stringify(lists, null, 2), "info");
+                ctx.ui.notify(formatTaskListsCommandOutput(lists, { full }), "info");
             }
             finally {
                 service.close();
@@ -52,6 +58,13 @@ export function registerPiTaskCommands(pi) {
             ctx.ui.notify(JSON.stringify(result, null, 2), "info");
         },
     });
+}
+export function formatTaskListsCommandOutput(lists, options = {}) {
+    if (options.full)
+        return JSON.stringify(lists, null, 2);
+    if (lists.length === 0)
+        return "No visible task lists.";
+    return lists.map((list) => `- name: ${list.name}\n  id: ${list.id}`).join("\n");
 }
 function openForCommand(ctx) {
     const resolved = resolvePiAgentId(ctx.sessionManager);
