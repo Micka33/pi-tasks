@@ -13,7 +13,7 @@ const TaskOutcome = z
     .string()
     .nullable()
     .optional()
-    .describe("Required when closing a task as done/canceled. Summarize choices/decisions, actions taken, and the result obtained. Formerly named result.");
+    .describe("Required when closing a task as done/canceled. Summarize choices/decisions, actions taken, and the final state obtained.");
 export const taskListCreateSchema = z.object({
     id: z.string().optional().describe("Optional stable list id. Generated when omitted."),
     name: z.string().min(1).describe("Human-readable task list name."),

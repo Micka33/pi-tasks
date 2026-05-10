@@ -168,7 +168,7 @@ When pausing a task with `task_update(status = "blocked")`, the active claim is 
 
 Use `notes` as task-local working memory while a task is in progress: important context, choices in progress, blockers, assumptions, and next steps belong there.
 
-`outcome` is the final result, deliverable, or conclusion for a completed or canceled task. Closing a task with `status="done"` or `status="canceled"` requires a non-empty `outcome`; summarize the choices/decisions made, actions taken, and result obtained. The field was previously named `result` and is migrated automatically in SQLite.
+`outcome` is the final deliverable, conclusion, or summary for a completed or canceled task. Closing a task with `status="done"` or `status="canceled"` requires a non-empty `outcome`; summarize the choices/decisions made, actions taken, and final state obtained.
 
 ## Privacy model
 

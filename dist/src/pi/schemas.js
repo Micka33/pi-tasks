@@ -12,7 +12,7 @@ const TaskUpdateAssignedToAgentId = Type.Optional(Type.Union([Type.String(), Typ
     description: "Set an assignee. When status=blocked, omit to assign the paused task to the current agent; pass null to release it.",
 }));
 const TaskOutcome = Type.Optional(Type.Union([Type.String(), Type.Null()], {
-    description: "Required when closing a task as done/canceled. Summarize choices/decisions, actions taken, and the result obtained. Formerly named result.",
+    description: "Required when closing a task as done/canceled. Summarize choices/decisions, actions taken, and the final state obtained.",
 }));
 export const TaskListCreateParams = Type.Object({
     id: Type.Optional(Type.String({ description: "Optional stable list id. Generated when omitted." })),

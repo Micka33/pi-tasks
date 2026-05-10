@@ -19,7 +19,7 @@ const TaskUpdateAssignedToAgentId = Type.Optional(
 );
 const TaskOutcome = Type.Optional(
   Type.Union([Type.String(), Type.Null()], {
-    description: "Required when closing a task as done/canceled. Summarize choices/decisions, actions taken, and the result obtained. Formerly named result.",
+    description: "Required when closing a task as done/canceled. Summarize choices/decisions, actions taken, and the final state obtained.",
   }),
 );
 
