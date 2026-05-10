@@ -82,10 +82,9 @@ export function formatTasksCommandOutput(data, actorAgentId) {
     }
     for (const task of tasks) {
         lines.push("");
-        lines.push(`#${task.position} ${statusGlyph(task.status)} ${statusLabel(task.status)} · ${task.title}`);
-        lines.push(`id: ${task.id}`);
-        lines.push(`agent: ${formatAgentLine(task, actorAgentId)}`);
-        lines.push(`time: ${formatTimeLine(task)}`);
+        lines.push(`#${task.position} ${statusGlyph(task.status)} ${statusLabel(task.status)} · ${task.title} (${task.id})`);
+        lines.push(`   ${formatAgentLine(task, actorAgentId)}`);
+        lines.push(`   ${formatTimeLine(task)}`);
         appendTextBlock(lines, "description", task.description);
         appendTextBlock(lines, "notes", task.notes);
         appendTextBlock(lines, "outcome", task.outcome);
@@ -148,9 +147,9 @@ function formatTimeLine(task) {
 function appendTextBlock(lines, label, value) {
     if (!value)
         return;
-    lines.push(`${label}:`);
+    lines.push(`   ${label}:`);
     for (const line of value.split(/\r?\n/)) {
-        lines.push(`  ${line}`);
+        lines.push(`     ${line}`);
     }
 }
 function statusGlyph(status) {

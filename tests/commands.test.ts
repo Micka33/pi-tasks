@@ -51,12 +51,14 @@ test("/task-lists full output returns complete JSON", () => {
 
 test("/tasks readable output puts metadata first and shows outcome", () => {
   const output = formatTasksCommandOutput({ list: list("one", "One"), tasks: [task({})] }, "agent-a");
-  assert.equal(output.includes("#1 ✓ done · Do the thing"), true);
-  assert.equal(output.includes("id: task-1"), true);
-  assert.equal(output.includes("agent: assigned=me"), true);
-  assert.equal(output.includes("time: created=2026-01-01 00:00:00Z"), true);
-  assert.equal(output.includes("description:\n  Useful details."), true);
-  assert.equal(output.includes("outcome:\n  Implemented and tested."), true);
+  assert.equal(output.includes("#1 ✓ done · Do the thing (task-1)"), true);
+  assert.equal(output.includes("\n   assigned=me"), true);
+  assert.equal(output.includes("\n   created=2026-01-01 00:00:00Z"), true);
+  assert.equal(output.includes("\n   description:\n     Useful details."), true);
+  assert.equal(output.includes("\n   outcome:\n     Implemented and tested."), true);
+  assert.equal(output.includes("id: task-1"), false);
+  assert.equal(output.includes("agent:"), false);
+  assert.equal(output.includes("time:"), false);
   assert.equal(output.includes("meta:"), false);
   assert.equal(output.includes("status="), false);
   assert.equal(output.includes("position="), false);
