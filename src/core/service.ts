@@ -20,6 +20,7 @@ import {
   type FindTaskListsInput,
   type GetTaskListInput,
   type PrivateAccessEvent,
+  type PrivateAccessEventsGetInput,
   type RefreshClaimInput,
   type ReleaseExpiredClaimsInput,
   type ReleaseExpiredClaimsResult,
@@ -462,10 +463,42 @@ export class TaskService {
     });
   }
 
-  getPrivateAccessEvents(listId: string): PrivateAccessEvent[] {
+  getPrivateAccessEvents(input: PrivateAccessEventsGetInput, access: AccessOptions): PrivateAccessEvent[] {
+    const conditions: string[] = [];
+    const params: SQLInputValue[] = [];
+
+    if (input.list_id !== undefined) {
+      this.getTaskListForAccess(input.list_id, access, { includeDeleted: true });
+      conditions.push("list_id = ?");
+      params.push(input.list_id);
+    } else {
+      const visibleLists = this.findTaskLists({ include_deleted: true }, access);
+      if (visibleLists.length === 0) return [];
+      conditions.push(`list_id IN (${visibleLists.map(() => "?").join(", ")})`);
+      params.push(...visibleLists.map((list) => list.id));
+    }
+
+    if (input.actor_agent_id !== undefined) {
+      validateRequiredString(input.actor_agent_id, "actor_agent_id");
+      conditions.push("actor_agent_id = ?");
+      params.push(input.actor_agent_id.trim());
+    }
+    if (input.tool_name !== undefined) {
+      validateRequiredString(input.tool_name, "tool_name");
+      conditions.push("tool_name = ?");
+      params.push(input.tool_name.trim());
+    }
+    if (input.since !== undefined) {
+      validateIsoDate(input.since, "since");
+      conditions.push("created_at >= ?");
+      params.push(input.since);
+    }
+
+    const limit = normalizeLimit(input.limit, 100, 1000, "limit");
+    params.push(limit);
     const rows = this.db
-      .prepare("SELECT * FROM private_access_events WHERE list_id = ? ORDER BY created_at ASC")
-      .all(listId) as Row[];
+      .prepare(`SELECT * FROM private_access_events WHERE ${conditions.join(" AND ")} ORDER BY created_at DESC LIMIT ?`)
+      .all(...params) as Row[];
     return rows.map(rowToPrivateAccessEvent);
   }
 
@@ -698,6 +731,20 @@ function validateTaskStatus(value: string): void {
   if (!(TASK_STATUSES as readonly string[]).includes(value)) {
     throw new ValidationError(`Invalid task status: ${value}`, { allowed: TASK_STATUSES });
   }
+}
+
+function validateIsoDate(value: string, field: string): void {
+  if (typeof value !== "string" || value.trim().length === 0 || !Number.isFinite(Date.parse(value))) {
+    throw new ValidationError(`${field} must be a valid ISO date string`, { [field]: value });
+  }
+}
+
+function normalizeLimit(value: number | undefined, defaultValue: number, maxValue: number, field: string): number {
+  const limit = value ?? defaultValue;
+  if (!Number.isInteger(limit) || limit <= 0 || limit > maxValue) {
+    throw new ValidationError(`${field} must be a positive integer <= ${maxValue}`, { [field]: value });
+  }
+  return limit;
 }
 
 function normalizeTtl(value: number | undefined): number {

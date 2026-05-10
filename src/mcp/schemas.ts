@@ -45,6 +45,14 @@ export const taskListGetSchema = z.object({
   include_deleted: z.boolean().optional(),
 });
 
+export const privateAccessEventsGetSchema = z.object({
+  list_id: z.string().optional().describe("Optional list id. When omitted, returns events only for lists visible to the current agent."),
+  actor_agent_id: z.string().optional(),
+  tool_name: z.string().optional(),
+  since: z.string().optional().describe("Only events at or after this ISO timestamp."),
+  limit: z.number().optional().describe("Maximum events to return. Defaults to 100; max 1000."),
+});
+
 export const taskCreateSchema = z.object({
   id: z.string().optional(),
   list_id: z.string(),

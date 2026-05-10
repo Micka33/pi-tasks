@@ -306,10 +306,29 @@ test("private lists are hidden, denied, and bypass-audited", () => {
       privateBypass: { toolName: "test", reason: "unit test confirmed bypass" },
     });
     assert.equal(bypass.list.id, privateList.id);
-    const events = service.getPrivateAccessEvents(privateList.id);
+
+    assert.deepEqual(service.getPrivateAccessEvents({}, b), []);
+    assert.throws(
+      () => service.getPrivateAccessEvents({ list_id: privateList.id }, b),
+      (error) => error instanceof PrivateListAccessError,
+    );
+
+    const events = service.getPrivateAccessEvents({ list_id: privateList.id }, a);
     assert.equal(events.length, 1);
     assert.equal(events[0]?.actor_agent_id, "agent-b");
     assert.equal(events[0]?.tool_name, "test");
+
+    const filteredEvents = service.getPrivateAccessEvents({ actor_agent_id: "agent-b", tool_name: "test", since: "2026-01-01T00:00:00.000Z", limit: 1 }, a);
+    assert.equal(filteredEvents.length, 1);
+
+    assert.throws(
+      () => service.getPrivateAccessEvents({ limit: 0 }, a),
+      (error) => error instanceof ValidationError && error.message.includes("limit"),
+    );
+    assert.throws(
+      () => service.getPrivateAccessEvents({ since: "not-a-date" }, a),
+      (error) => error instanceof ValidationError && error.message.includes("since"),
+    );
     service.close();
   } finally {
     cleanup();

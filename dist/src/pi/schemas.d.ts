@@ -22,6 +22,13 @@ export declare const TaskListGetParams: Type.TObject<{
     statuses: Type.TOptional<Type.TArray<Type.TUnsafe<"todo" | "in_progress" | "blocked" | "done" | "canceled">>>;
     include_deleted: Type.TOptional<Type.TBoolean>;
 }>;
+export declare const PrivateAccessEventsGetParams: Type.TObject<{
+    list_id: Type.TOptional<Type.TString>;
+    actor_agent_id: Type.TOptional<Type.TString>;
+    tool_name: Type.TOptional<Type.TString>;
+    since: Type.TOptional<Type.TString>;
+    limit: Type.TOptional<Type.TNumber>;
+}>;
 export declare const TaskCreateParams: Type.TObject<{
     id: Type.TOptional<Type.TString>;
     list_id: Type.TString;

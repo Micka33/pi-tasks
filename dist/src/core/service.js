@@ -350,10 +350,41 @@ export class TaskService {
             return this.getTaskRow(task.id);
         });
     }
-    getPrivateAccessEvents(listId) {
+    getPrivateAccessEvents(input, access) {
+        const conditions = [];
+        const params = [];
+        if (input.list_id !== undefined) {
+            this.getTaskListForAccess(input.list_id, access, { includeDeleted: true });
+            conditions.push("list_id = ?");
+            params.push(input.list_id);
+        }
+        else {
+            const visibleLists = this.findTaskLists({ include_deleted: true }, access);
+            if (visibleLists.length === 0)
+                return [];
+            conditions.push(`list_id IN (${visibleLists.map(() => "?").join(", ")})`);
+            params.push(...visibleLists.map((list) => list.id));
+        }
+        if (input.actor_agent_id !== undefined) {
+            validateRequiredString(input.actor_agent_id, "actor_agent_id");
+            conditions.push("actor_agent_id = ?");
+            params.push(input.actor_agent_id.trim());
+        }
+        if (input.tool_name !== undefined) {
+            validateRequiredString(input.tool_name, "tool_name");
+            conditions.push("tool_name = ?");
+            params.push(input.tool_name.trim());
+        }
+        if (input.since !== undefined) {
+            validateIsoDate(input.since, "since");
+            conditions.push("created_at >= ?");
+            params.push(input.since);
+        }
+        const limit = normalizeLimit(input.limit, 100, 1000, "limit");
+        params.push(limit);
         const rows = this.db
-            .prepare("SELECT * FROM private_access_events WHERE list_id = ? ORDER BY created_at ASC")
-            .all(listId);
+            .prepare(`SELECT * FROM private_access_events WHERE ${conditions.join(" AND ")} ORDER BY created_at DESC LIMIT ?`)
+            .all(...params);
         return rows.map(rowToPrivateAccessEvent);
     }
     releaseExpiredClaimsInternal(input, access, now) {
@@ -557,6 +588,18 @@ function validateTaskStatus(value) {
     if (!TASK_STATUSES.includes(value)) {
         throw new ValidationError(`Invalid task status: ${value}`, { allowed: TASK_STATUSES });
     }
+}
+function validateIsoDate(value, field) {
+    if (typeof value !== "string" || value.trim().length === 0 || !Number.isFinite(Date.parse(value))) {
+        throw new ValidationError(`${field} must be a valid ISO date string`, { [field]: value });
+    }
+}
+function normalizeLimit(value, defaultValue, maxValue, field) {
+    const limit = value ?? defaultValue;
+    if (!Number.isInteger(limit) || limit <= 0 || limit > maxValue) {
+        throw new ValidationError(`${field} must be a positive integer <= ${maxValue}`, { [field]: value });
+    }
+    return limit;
 }
 function normalizeTtl(value) {
     const ttl = value ?? DEFAULT_CLAIM_TTL_SECONDS;

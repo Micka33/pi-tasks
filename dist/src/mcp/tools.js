@@ -2,7 +2,7 @@ import { ElicitResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { PrivateListAccessError, serializeError } from "../core/errors.js";
 import { resolveMcpAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
-import { taskAddManySchema, taskClaimNextSchema, taskClaimRefreshSchema, taskCreateSchema, taskDeleteSchema, taskListCreateSchema, taskListDeleteSchema, taskListGetSchema, taskListsFindSchema, taskReleaseExpiredClaimsSchema, taskReorderSchema, taskUpdateSchema, } from "./schemas.js";
+import { privateAccessEventsGetSchema, taskAddManySchema, taskClaimNextSchema, taskClaimRefreshSchema, taskCreateSchema, taskDeleteSchema, taskListCreateSchema, taskListDeleteSchema, taskListGetSchema, taskListsFindSchema, taskReleaseExpiredClaimsSchema, taskReorderSchema, taskUpdateSchema, } from "./schemas.js";
 const COMMON_DESCRIPTION_SUFFIX = " Private task lists are strictly enforced. Use task_claim_next as the only normal way to enter in_progress; task_update rejects status=in_progress. Use task_claim_refresh for long-running claims. Use notes as task-local working memory for important context, choices in progress, blockers, and next steps. When closing a task as done/canceled, outcome is required and should summarize choices/decisions, actions taken, and final state obtained. When pausing with status=blocked, omit assigned_to_agent_id to keep responsibility on the pausing agent; pass assigned_to_agent_id:null to release it.";
 export function registerMcpTaskTools(server) {
     const definitions = [
@@ -35,6 +35,14 @@ export function registerMcpTaskTools(server) {
             description: "Soft-delete a task list and all active tasks in it by setting deleted_at. Claims are cleared; rows remain in SQLite for audit/history." + COMMON_DESCRIPTION_SUFFIX,
             inputSchema: taskListDeleteSchema,
             run: (service, params, access) => service.deleteTaskList(params, access),
+        },
+        {
+            name: "task_private_access_events_get",
+            title: "Get Private Access Audit Events",
+            description: "Read audited private-list bypass events. With list_id, the current agent must have access to that list or explicitly confirm a private-list bypass. Without list_id, only events for visible lists are returned." + COMMON_DESCRIPTION_SUFFIX,
+            inputSchema: privateAccessEventsGetSchema,
+            readOnly: true,
+            run: (service, params, access) => service.getPrivateAccessEvents(params, access),
         },
         {
             name: "task_create",

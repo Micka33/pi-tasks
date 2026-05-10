@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatTaskListDeleteCommandOutput, formatTaskListsCommandOutput, formatTasksCommandOutput } from "../src/pi/commands.js";
-import type { Task, TaskList } from "../src/core/types.js";
+import { formatTaskAuditCommandOutput, formatTaskListDeleteCommandOutput, formatTaskListsCommandOutput, formatTasksCommandOutput } from "../src/pi/commands.js";
+import type { PrivateAccessEvent, Task, TaskList } from "../src/core/types.js";
 
 const list = (id: string, name: string): TaskList => ({
   id,
@@ -14,6 +14,16 @@ const list = (id: string, name: string): TaskList => ({
   created_at: "2026-01-01T00:00:00.000Z",
   updated_at: "2026-01-01T00:00:00.000Z",
   deleted_at: null,
+});
+
+const auditEvent = (overrides: Partial<PrivateAccessEvent> = {}): PrivateAccessEvent => ({
+  id: "event-1",
+  list_id: "private-list",
+  actor_agent_id: "agent-b",
+  tool_name: "task_list_get",
+  reason: "User confirmed bypass",
+  created_at: "2026-01-01T00:30:00.000Z",
+  ...overrides,
 });
 
 const task = (overrides: Partial<Task>): Task => ({
@@ -56,6 +66,16 @@ test("/task-list-delete output summarizes deleted list and active task count", (
   assert.equal(
     output,
     "Deleted task list:\n- name: One\n  id: one\n  deleted_at: 2026-01-01T00:20:00.000Z\n  active tasks deleted: 2",
+  );
+});
+
+test("/task-audit output is readable and handles empty results", () => {
+  assert.equal(formatTaskAuditCommandOutput([]), "Private access audit\nNo visible private access events.");
+
+  const output = formatTaskAuditCommandOutput([auditEvent()]);
+  assert.equal(
+    output,
+    "Private access audit\n\n2026-01-01 00:30:00Z · list=private-list · actor=agent-b · tool=task_list_get\n  reason: User confirmed bypass",
   );
 });
 

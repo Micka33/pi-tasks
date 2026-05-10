@@ -51,6 +51,14 @@ export const TaskListGetParams = Type.Object({
   include_deleted: Type.Optional(Type.Boolean()),
 });
 
+export const PrivateAccessEventsGetParams = Type.Object({
+  list_id: Type.Optional(Type.String({ description: "Optional list id. When omitted, returns events only for lists visible to the current agent." })),
+  actor_agent_id: Type.Optional(Type.String()),
+  tool_name: Type.Optional(Type.String()),
+  since: Type.Optional(Type.String({ description: "Only events at or after this ISO timestamp." })),
+  limit: Type.Optional(Type.Number({ description: "Maximum events to return. Defaults to 100; max 1000." })),
+});
+
 export const TaskCreateParams = Type.Object({
   id: Type.Optional(Type.String()),
   list_id: Type.String(),

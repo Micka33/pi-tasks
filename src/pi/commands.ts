@@ -2,7 +2,7 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 import { resolvePiAgentId } from "../core/agent-id.js";
 import { PrivateListAccessError } from "../core/errors.js";
 import { TaskService } from "../core/service.js";
-import type { AccessOptions, DeleteTaskListResult, Task, TaskList, TaskListWithTasks, TaskStatus } from "../core/types.js";
+import type { AccessOptions, DeleteTaskListResult, PrivateAccessEvent, Task, TaskList, TaskListWithTasks, TaskStatus } from "../core/types.js";
 
 export function registerPiTaskCommands(pi: ExtensionAPI): void {
   pi.registerCommand("task-store", {
@@ -80,6 +80,23 @@ export function registerPiTaskCommands(pi: ExtensionAPI): void {
       ctx.ui.notify(output, "info");
     },
   });
+
+  pi.registerCommand("task-audit", {
+    description: "Show private-list bypass audit events: /task-audit [list_id] [full]",
+    handler: async (args, ctx) => {
+      const parsed = parseTaskAuditArgs(args);
+      if (!parsed) {
+        ctx.ui.notify("Usage: /task-audit [list_id] [full]", "error");
+        return;
+      }
+
+      const output = await withOptionalBypass(ctx, "task-audit", (service, access) => {
+        const events = service.getPrivateAccessEvents(parsed.listId ? { list_id: parsed.listId } : {}, access);
+        return parsed.full ? JSON.stringify(events, null, 2) : formatTaskAuditCommandOutput(events);
+      });
+      ctx.ui.notify(output, "info");
+    },
+  });
 }
 
 export function formatTaskListsCommandOutput(lists: TaskList[], options: { full?: boolean } = {}): string {
@@ -96,6 +113,18 @@ export function formatTaskListDeleteCommandOutput(result: DeleteTaskListResult):
     `  deleted_at: ${result.list.deleted_at ?? "already deleted"}`,
     `  active tasks deleted: ${result.deleted_tasks.length}`,
   ];
+  return lines.join("\n");
+}
+
+export function formatTaskAuditCommandOutput(events: PrivateAccessEvent[]): string {
+  if (events.length === 0) return "Private access audit\nNo visible private access events.";
+
+  const lines = ["Private access audit"];
+  for (const event of events) {
+    lines.push("");
+    lines.push(`${formatIso(event.created_at)} · list=${event.list_id} · actor=${event.actor_agent_id} · tool=${event.tool_name}`);
+    lines.push(`  reason: ${event.reason}`);
+  }
   return lines.join("\n");
 }
 
@@ -129,6 +158,14 @@ function parseTasksArgs(args: string): { listId: string; full: boolean } | null 
   const parts = args.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return null;
   if (parts.length === 1) return { listId: parts[0]!, full: false };
+  if (parts.length === 2 && isFullArg(parts[1]!)) return { listId: parts[0]!, full: true };
+  return null;
+}
+
+function parseTaskAuditArgs(args: string): { listId?: string; full: boolean } | null {
+  const parts = args.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { full: false };
+  if (parts.length === 1) return isFullArg(parts[0]!) ? { full: true } : { listId: parts[0]!, full: false };
   if (parts.length === 2 && isFullArg(parts[1]!)) return { listId: parts[0]!, full: true };
   return null;
 }

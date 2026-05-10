@@ -7,6 +7,7 @@ import { resolveMcpAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
 import type { AccessOptions } from "../core/types.js";
 import {
+  privateAccessEventsGetSchema,
   taskAddManySchema,
   taskClaimNextSchema,
   taskClaimRefreshSchema,
@@ -67,6 +68,14 @@ export function registerMcpTaskTools(server: McpServer): void {
       description: "Soft-delete a task list and all active tasks in it by setting deleted_at. Claims are cleared; rows remain in SQLite for audit/history." + COMMON_DESCRIPTION_SUFFIX,
       inputSchema: taskListDeleteSchema,
       run: (service, params, access) => service.deleteTaskList(params, access),
+    },
+    {
+      name: "task_private_access_events_get",
+      title: "Get Private Access Audit Events",
+      description: "Read audited private-list bypass events. With list_id, the current agent must have access to that list or explicitly confirm a private-list bypass. Without list_id, only events for visible lists are returned." + COMMON_DESCRIPTION_SUFFIX,
+      inputSchema: privateAccessEventsGetSchema,
+      readOnly: true,
+      run: (service, params, access) => service.getPrivateAccessEvents(params, access),
     },
     {
       name: "task_create",

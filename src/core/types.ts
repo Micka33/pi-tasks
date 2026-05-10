@@ -50,6 +50,14 @@ export interface PrivateAccessEvent {
   created_at: string;
 }
 
+export interface PrivateAccessEventsGetInput {
+  list_id?: string;
+  actor_agent_id?: string;
+  tool_name?: string;
+  since?: string;
+  limit?: number;
+}
+
 export interface ActorContext {
   agentId: string;
   source: "pi" | "mcp" | "test" | "unknown";

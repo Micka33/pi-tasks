@@ -34,7 +34,7 @@ export function createTaskListIdAutocompleteProvider(current, ctx) {
     };
 }
 export function extractTasksListIdPrefix(beforeCursor) {
-    const match = beforeCursor.match(/^\/(?:tasks|task-list-delete)[ \t]+([^ \t]*)$/);
+    const match = beforeCursor.match(/^\/(?:tasks|task-list-delete|task-audit)[ \t]+([^ \t]*)$/);
     return match?.[1];
 }
 export function taskListsToAutocompleteItems(lists, prefix) {

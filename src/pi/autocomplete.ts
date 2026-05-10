@@ -40,7 +40,7 @@ export function createTaskListIdAutocompleteProvider(current: AutocompleteProvid
 }
 
 export function extractTasksListIdPrefix(beforeCursor: string): string | undefined {
-  const match = beforeCursor.match(/^\/(?:tasks|task-list-delete)[ \t]+([^ \t]*)$/);
+  const match = beforeCursor.match(/^\/(?:tasks|task-list-delete|task-audit)[ \t]+([^ \t]*)$/);
   return match?.[1];
 }
 

@@ -134,10 +134,12 @@ Useful commands:
 /task-lists full       # complete JSON metadata
 /tasks <list_id>       # readable task details, including ids, agents, times, descriptions, notes, outcome
 /tasks <list_id> full  # complete JSON for the list and tasks
+/task-audit [list_id]  # readable private-list bypass audit events visible to this agent
+/task-audit [list_id] full # complete JSON audit events
 /task-list-delete <list_id> # soft-delete a list and all active tasks in it
 ```
 
-`/tasks <list_id>` and `/task-list-delete <list_id>` support Pi TUI autocomplete for visible task-list ids. Type `/tasks ` then trigger completion, or start typing a list id/name to filter suggestions. `/task-widget` also autocompletes its actions: `on`, `off`, `compact`, `full`, `refresh`.
+`/tasks <list_id>`, `/task-audit <list_id>`, and `/task-list-delete <list_id>` support Pi TUI autocomplete for visible task-list ids. Type `/tasks ` then trigger completion, or start typing a list id/name to filter suggestions. `/task-widget` also autocompletes its actions: `on`, `off`, `compact`, `full`, `refresh`.
 
 The widget refreshes on session start, after `task_*` tool calls, and periodically every 10 seconds to catch updates made by other agents or MCP clients.
 
@@ -149,6 +151,7 @@ Pi currently renders at most 10 widget lines. `pi-tasks` stays under that limit 
 - `task_lists_find` — find visible lists by scope, visibility, owner, creator, or name.
 - `task_list_get` — read a list and tasks in execution order.
 - `task_list_delete` — soft-delete a list and all active tasks in it.
+- `task_private_access_events_get` — read private-list bypass audit events visible to the current agent.
 - `task_create` — add one task.
 - `task_add_many` — add several tasks transactionally.
 - `task_claim_next` — atomically claim the next eligible `todo` task.
@@ -181,7 +184,7 @@ Private lists are enforced strictly:
 - Pi can bypass after an explicit user confirmation dialog;
 - MCP tries form elicitation when the host supports it, otherwise returns an access error.
 
-Bypasses are audited in SQLite in `private_access_events`.
+Bypasses are audited in SQLite in `private_access_events`. Read them with `/task-audit [list_id] [full]` in Pi, or the read-only `task_private_access_events_get` tool in Pi/MCP. Reading audit events follows the same privacy model: list-specific reads require access to that list or an explicit user-confirmed bypass; global reads return only events for lists visible to the current agent.
 
 ## Development
 

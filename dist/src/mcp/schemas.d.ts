@@ -46,6 +46,13 @@ export declare const taskListGetSchema: z.ZodObject<{
     }>>>;
     include_deleted: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;
+export declare const privateAccessEventsGetSchema: z.ZodObject<{
+    list_id: z.ZodOptional<z.ZodString>;
+    actor_agent_id: z.ZodOptional<z.ZodString>;
+    tool_name: z.ZodOptional<z.ZodString>;
+    since: z.ZodOptional<z.ZodString>;
+    limit: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>;
 export declare const taskCreateSchema: z.ZodObject<{
     id: z.ZodOptional<z.ZodString>;
     list_id: z.ZodString;
