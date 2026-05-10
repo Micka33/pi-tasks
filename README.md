@@ -1,99 +1,155 @@
-**Spécification Produit**
+# pi-tasks
 
-**Objectif**
-Créer un plugin permettant à un ou plusieurs agents de gérer des listes de tâches persistantes, ordonnées et partageables. Un agent doit pouvoir créer une liste, y ajouter des tâches, réclamer la prochaine tâche à exécuter, puis mettre à jour son état.
+Persistent, ordered, shared task lists for Pi agents and MCP clients.
 
-**Concepts**
-Une `task_list` est une liste de tâches avec un identifiant stable `list_id`.
+`pi-tasks` ships both:
 
-Une liste n’appartient pas forcément à un agent. Plusieurs agents peuvent partager la même liste en utilisant le même `list_id`.
+1. a **Pi package/extension** exposing task tools directly inside Pi;
+2. a **local stdio MCP server** exposing the same tool surface to MCP hosts.
 
-Un agent peut être :
-- créateur d’une liste
-- propriétaire optionnel d’une liste privée
-- assigné à une tâche
-- détenteur temporaire d’une tâche en cours
+The product specification is kept in [`pi-tasks.md`](./pi-tasks.md).
 
-**Statuts De Tâche**
+## Requirements
 
-| Statut | Signification |
-|---|---|
-| `todo` | tâche prête à être exécutée |
-| `in_progress` | tâche réclamée par un agent |
-| `blocked` | tâche bloquée, nécessite une intervention ou information |
-| `done` | tâche terminée |
-| `canceled` | tâche annulée ou devenue inutile |
+- Node.js >= 24, because the implementation uses the built-in `node:sqlite` module.
+- Pi for the extension use case.
+- An MCP-compatible host for the stdio server use case.
 
-**Champs `task_lists`**
+## Install for Pi
 
-| Champ | Description |
-|---|---|
-| `id` | identifiant unique de la liste |
-| `name` | nom lisible de la liste |
-| `scope_type` | contexte de la liste : `workspace`, `thread`, `agent`, `global`, `custom` |
-| `scope_key` | identifiant du contexte : chemin workspace, thread id, agent id, etc. |
-| `visibility` | `private` ou `shared` |
-| `owner_agent_id` | agent propriétaire si liste privée ou explicitement possédée |
-| `created_by_agent_id` | agent ayant créé la liste |
-| `created_at` | date de création |
-| `updated_at` | date de dernière modification |
+From this repository:
 
-**Champs `tasks`**
+```bash
+pi install git:git@github.com:Micka33/pi-tasks.git
+```
 
-| Champ | Description |
-|---|---|
-| `id` | identifiant unique de la tâche |
-| `list_id` | liste à laquelle appartient la tâche |
-| `position` | ordre d’exécution dans la liste |
-| `title` | titre court de la tâche |
-| `description` | description détaillée optionnelle |
-| `notes` | notes de suivi optionnelles |
-| `status` | statut courant de la tâche |
-| `assigned_to_agent_id` | agent auquel la tâche est réservée, optionnel |
-| `claimed_by_agent_id` | agent qui exécute actuellement la tâche |
-| `claim_expires_at` | date d’expiration du claim |
-| `result` | résultat produit à la fin de la tâche |
-| `created_at` | date de création |
-| `updated_at` | date de dernière modification |
-| `started_at` | date de début d’exécution |
-| `completed_at` | date de fin si `done` ou `canceled` |
+For project-local installation:
 
-**Outils MCP**
+```bash
+pi install -l git:git@github.com:Micka33/pi-tasks.git
+```
 
-| Outil | Fonction |
-|---|---|
-| `task_list_create` | créer une nouvelle liste de tâches |
-| `task_lists_find` | retrouver des listes existantes par scope, visibilité ou propriétaire |
-| `task_list_get` | lire une liste et ses tâches dans l’ordre d’exécution |
-| `task_create` | ajouter une tâche unique |
-| `task_add_many` | ajouter plusieurs tâches en une fois |
-| `task_claim_next` | réclamer atomiquement la prochaine tâche `todo` |
-| `task_update` | modifier une tâche ou son statut |
-| `task_reorder` | réordonner des tâches |
-| `task_release_expired_claims` | libérer les claims expirés |
-| `task_delete` | supprimer une tâche |
+During development:
 
-**Workflow Agent Standard**
+```bash
+pi -e ./src/pi/index.ts
+```
 
-1. L’agent cherche une liste existante avec `task_lists_find`.
-2. Si aucune liste adaptée n’existe, il crée une liste avec `task_list_create`.
-3. Il ajoute les tâches avec `task_create` ou `task_add_many`.
-4. Il appelle `task_claim_next` avec son `agent_id`.
-5. Il exécute la tâche retournée.
-6. Il appelle `task_update` avec `status = done`, `blocked`, `todo` ou `canceled`.
-7. Il répète jusqu’à ce que `task_claim_next` retourne aucune tâche.
+## SQLite storage
 
-**Règles De Partage**
+Default database path:
 
-Même base de données + même `list_id` = même liste partagée.
+```text
+.pi/pi-tasks/tasks.sqlite
+```
 
-Deux agents peuvent travailler sur la même liste.
+Override it to share one queue between workspaces, Pi sessions, and MCP clients:
 
-Deux agents ne doivent pas exécuter la même tâche en même temps.
+```bash
+export PI_TASKS_DB_PATH=/absolute/path/to/tasks.sqlite
+```
 
-Une tâche assignée à un agent ne doit être réclamée que par cet agent.
+Same SQLite database + same `list_id` = same shared task list.
 
-Une tâche non assignée peut être réclamée par n’importe quel agent ayant accès à la liste.
+## Agent identity
 
-**Règle Centrale**
-`task_claim_next` est l’unique manière normale de prendre une tâche à exécuter. Un agent ne doit pas choisir manuellement une tâche depuis `task_list_get` puis la passer lui-même en `in_progress`, car cela peut créer des conflits entre agents.
+### Pi
+
+The Pi extension derives `agent_id` from the Pi session file:
+
+```text
+pi-session:<sha256(session-file)[0..16]>
+```
+
+You can override it with:
+
+```bash
+export PI_TASKS_AGENT_ID=my-agent
+```
+
+### MCP
+
+MCP has no Pi session, so set a stable identity explicitly:
+
+```bash
+export PI_TASKS_AGENT_ID=mcp-worker-1
+```
+
+If omitted, the MCP server uses a process-scoped fallback; set `PI_TASKS_AGENT_ID` for stable claims across restarts.
+
+## MCP stdio server
+
+Build first:
+
+```bash
+npm install
+npm run build
+```
+
+Run:
+
+```bash
+PI_TASKS_AGENT_ID=mcp-worker-1 \
+PI_TASKS_DB_PATH=/absolute/path/to/tasks.sqlite \
+node dist/src/mcp/cli.js
+```
+
+Example MCP config shape:
+
+```json
+{
+  "mcpServers": {
+    "pi-tasks": {
+      "command": "node",
+      "args": ["/absolute/path/to/pi-tasks/dist/src/mcp/cli.js"],
+      "env": {
+        "PI_TASKS_AGENT_ID": "mcp-worker-1",
+        "PI_TASKS_DB_PATH": "/absolute/path/to/tasks.sqlite"
+      }
+    }
+  }
+}
+```
+
+## Tools
+
+- `task_list_create` — create a task list.
+- `task_lists_find` — find visible lists by scope, visibility, owner, creator, or name.
+- `task_list_get` — read a list and tasks in execution order.
+- `task_create` — add one task.
+- `task_add_many` — add several tasks transactionally.
+- `task_claim_next` — atomically claim the next eligible `todo` task.
+- `task_claim_refresh` — refresh a claim TTL without changing `started_at`.
+- `task_update` — update task fields or status, except `in_progress`.
+- `task_reorder` — reorder active tasks.
+- `task_release_expired_claims` — release expired claims back to `todo`.
+- `task_delete` — soft-delete a task via `deleted_at`.
+
+## Important workflow rule
+
+`task_claim_next` is the only normal way to move a task to `in_progress`.
+
+`task_update(status = "in_progress")` is rejected intentionally to avoid multi-agent conflicts.
+
+For long tasks, call `task_claim_refresh` periodically. The default TTL is 2 hours.
+
+## Privacy model
+
+Private lists are enforced strictly:
+
+- shared lists are visible to all agents using the database;
+- private lists are accessible only to `owner_agent_id`, or to `created_by_agent_id` when no owner is set;
+- Pi can bypass after an explicit user confirmation dialog;
+- MCP tries form elicitation when the host supports it, otherwise returns an access error.
+
+Bypasses are audited in SQLite in `private_access_events`.
+
+## Development
+
+```bash
+npm install
+npm run typecheck
+npm test
+```
+
+The test suite covers SQLite persistence, claim uniqueness, claim refresh, soft-delete, private-list enforcement, and status rules.

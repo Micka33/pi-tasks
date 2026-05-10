@@ -1,0 +1,56 @@
+{
+  "name": "pi-tasks",
+  "version": "0.1.0",
+  "description": "Persistent shared task lists for Pi agents and MCP clients.",
+  "type": "module",
+  "private": false,
+  "keywords": [
+    "pi-package",
+    "pi",
+    "mcp",
+    "tasks",
+    "agents"
+  ],
+  "files": [
+    "bin",
+    "dist/src",
+    "src",
+    "README.md",
+    "pi-tasks.md"
+  ],
+  "bin": {
+    "pi-tasks-mcp": "./bin/pi-tasks-mcp.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/tests/*.test.js",
+    "mcp": "npm run build && node dist/mcp/cli.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "^0.74.0",
+    "@earendil-works/pi-coding-agent": "^0.74.0",
+    "@earendil-works/pi-tui": "^0.74.0",
+    "@types/node": "^25.6.2",
+    "typebox": "^1.1.38",
+    "typescript": "^6.0.3"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "pi": {
+    "extensions": [
+      "./src/pi/index.ts"
+    ]
+  }
+}
