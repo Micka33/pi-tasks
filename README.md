@@ -187,9 +187,12 @@ Bypasses are audited in SQLite in `private_access_events`.
 npm install
 npm run typecheck
 npm test
+npm run coverage
 ```
 
-The test suite covers SQLite persistence, claim uniqueness, claim refresh, soft-delete, private-list enforcement, and status rules.
+`npm run coverage` calls `scripts/check-coverage.mjs`, the same helper used by GitHub CI. It builds the project, runs the Node test runner with coverage enabled, and enforces 100% thresholds for lines, branches, and functions.
+
+The test suite covers SQLite persistence, claim uniqueness, claim refresh, soft-delete, private-list enforcement, status rules, command formatting, widget formatting, and autocomplete helpers.
 
 ## Releases
 

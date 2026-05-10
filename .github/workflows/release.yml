@@ -54,11 +54,8 @@ jobs:
       - name: Set package version from tag
         run: npm version --no-git-tag-version --allow-same-version "${{ steps.version.outputs.version }}"
 
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Test
-        run: npm test
+      - name: Typecheck and coverage
+        run: npm run ci
 
       - name: Pack release artifact
         id: pack

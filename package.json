@@ -14,7 +14,9 @@
   "files": [
     "bin",
     "dist/src",
+    "scripts",
     "src",
+    "tests",
     "README.md",
     "pi-tasks.md"
   ],
@@ -24,6 +26,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/tests/*.test.js",
+    "coverage": "node scripts/check-coverage.mjs",
+    "ci": "npm run typecheck && npm run coverage",
     "mcp": "npm run build && node dist/mcp/cli.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
