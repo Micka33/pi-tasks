@@ -11,7 +11,7 @@ The product specification is kept in [`pi-tasks.md`](./pi-tasks.md).
 
 ## Requirements
 
-- Node.js >= 24, because the implementation uses the built-in `node:sqlite` module.
+- Node.js 24.15.0 exactly. `.node-version` is the runtime source of truth used by GitHub Actions; `package.json`, `package-lock.json`, `.nvmrc`, and `.npmrc` keep local installs strict and synchronized because the implementation uses the built-in `node:sqlite` module.
 - Pi for the extension use case.
 - An MCP-compatible host for the stdio server use case.
 
@@ -228,7 +228,10 @@ Bypasses are audited in SQLite in `private_access_events`. Read them with `/task
 
 ## Development
 
+Use Node.js 24.15.0 before installing dependencies. With `nvm`:
+
 ```bash
+nvm use
 npm install
 npm run typecheck
 npm test
@@ -248,4 +251,4 @@ git tag -a v0.1.1 -m "v0.1.1"
 git push origin v0.1.1
 ```
 
-The workflow builds, tests, runs `npm pack`, uploads the `.tgz` artifact, and uploads its SHA256 checksum.
+The workflow reads Node.js from `.node-version`, builds, tests, runs `npm pack`, uploads the `.tgz` artifact, and uploads its SHA256 checksum.
