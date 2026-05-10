@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   release:
@@ -47,6 +48,7 @@ jobs:
         with:
           node-version-file: ".node-version"
           cache: npm
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         run: npm ci
@@ -66,6 +68,12 @@ jobs:
           TARBALL="$(npm pack --pack-destination release)"
           sha256sum "release/$TARBALL" > "release/$TARBALL.sha256"
           echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+
+      - name: Publish npm package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: npm publish "release/$TARBALL" --access public --provenance
 
       - name: Create GitHub release
         shell: bash

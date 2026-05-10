@@ -21,7 +21,7 @@
     "pi-tasks.md"
   ],
   "bin": {
-    "pi-tasks-mcp": "./bin/pi-tasks-mcp.js"
+    "pi-tasks-mcp": "bin/pi-tasks-mcp.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -29,7 +29,8 @@
     "coverage": "node scripts/check-coverage.mjs",
     "ci": "npm run typecheck && npm run coverage",
     "mcp": "npm run build && node dist/src/mcp/cli.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
@@ -56,5 +57,17 @@
     "extensions": [
       "./src/pi/index.ts"
     ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Micka33/pi-tasks.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Micka33/pi-tasks/issues"
+  },
+  "homepage": "https://github.com/Micka33/pi-tasks#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }

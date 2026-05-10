@@ -17,16 +17,22 @@ The product specification is kept in [`pi-tasks.md`](./pi-tasks.md).
 
 ## Install for Pi
 
-From this repository:
+From npm, pinned to a released version:
 
 ```bash
-pi install git:git@github.com:Micka33/pi-tasks.git
+pi install npm:pi-tasks@1.0.0
 ```
 
 For project-local installation:
 
 ```bash
-pi install -l git:git@github.com:Micka33/pi-tasks.git
+pi install -l npm:pi-tasks@1.0.0
+```
+
+From this repository instead of npm:
+
+```bash
+pi install git:git@github.com:Micka33/pi-tasks.git@v1.0.0
 ```
 
 During development:
@@ -251,4 +257,4 @@ git tag -a v0.1.1 -m "v0.1.1"
 git push origin v0.1.1
 ```
 
-The workflow reads Node.js from `.node-version`, builds `dist/` on the runner, tests, runs `npm pack`, uploads the `.tgz` artifact, and uploads its SHA256 checksum. `dist/` is intentionally ignored by git; release artifacts include the generated `dist/src` files from the build.
+The workflow reads Node.js from `.node-version`, builds `dist/` on the runner, tests, runs `npm pack`, publishes that exact tarball to npm using the `NPM_ACCESS_TOKEN` GitHub secret, then uploads the `.tgz` artifact and its SHA256 checksum to the GitHub Release. `NPM_ACCESS_TOKEN` must be an npm token allowed to publish `pi-tasks` (for accounts with 2FA, use an automation/granular publish token). `dist/` is intentionally ignored by git; release artifacts include the generated `dist/src` files from the build.
