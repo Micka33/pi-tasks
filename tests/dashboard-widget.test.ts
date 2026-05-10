@@ -6,7 +6,7 @@ import test from "node:test";
 import { buildDashboard } from "../src/core/dashboard.js";
 import { TaskService } from "../src/core/service.js";
 import type { AccessOptions } from "../src/core/types.js";
-import { formatDashboard } from "../src/pi/dashboard-widget.js";
+import { formatDashboard, getTaskWidgetArgumentCompletions } from "../src/pi/dashboard-widget.js";
 
 function tmpDb(): { dbPath: string; cleanup: () => void } {
   const dir = mkdtempSync(join(tmpdir(), "pi-tasks-widget-"));
@@ -22,6 +22,14 @@ function assertFramedWidget(lines: string[], maxLines: number): void {
   assert.equal(lines.at(-1)?.startsWith("╰"), true);
   assert.equal(new Set(lines.map((line) => line.length)).size, 1, "all frame lines should have equal string length");
 }
+
+test("task-widget command autocompletes supported actions", () => {
+  assert.deepEqual(getTaskWidgetArgumentCompletions("f")?.map((item) => item.value), ["full"]);
+  assert.deepEqual(getTaskWidgetArgumentCompletions("  c")?.map((item) => item.value), ["compact"]);
+  assert.deepEqual(getTaskWidgetArgumentCompletions("")?.map((item) => item.value), ["on", "off", "compact", "full", "refresh"]);
+  assert.equal(getTaskWidgetArgumentCompletions("compact "), null);
+  assert.equal(getTaskWidgetArgumentCompletions("unknown"), null);
+});
 
 test("dashboard widget is framed and stays under Pi's 10-line widget limit", () => {
   const { dbPath, cleanup } = tmpDb();

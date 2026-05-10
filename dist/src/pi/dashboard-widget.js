@@ -8,6 +8,13 @@ const COMPACT_WIDGET_LINES = 8;
 const FULL_WIDGET_LINES = PI_MAX_WIDGET_LINES;
 const MAX_INNER_CHARS = 106;
 const MIN_INNER_CHARS = 38;
+const TASK_WIDGET_ACTIONS = [
+    { value: "on", label: "on", description: "Enable the pi-tasks widget" },
+    { value: "off", label: "off", description: "Disable the pi-tasks widget for this session" },
+    { value: "compact", label: "compact", description: "Show the compact widget layout" },
+    { value: "full", label: "full", description: "Show the full widget layout" },
+    { value: "refresh", label: "refresh", description: "Refresh the widget immediately" },
+];
 const state = {
     enabled: true,
     mode: "compact",
@@ -37,6 +44,7 @@ export function registerPiTasksDashboardWidget(pi) {
     });
     pi.registerCommand("task-widget", {
         description: "Control the pi-tasks dashboard widget: /task-widget on|off|compact|full|refresh",
+        getArgumentCompletions: getTaskWidgetArgumentCompletions,
         handler: async (args, ctx) => {
             const action = args.trim().toLowerCase() || "refresh";
             switch (action) {
@@ -72,6 +80,13 @@ export function registerPiTasksDashboardWidget(pi) {
             }
         },
     });
+}
+export function getTaskWidgetArgumentCompletions(prefix) {
+    const query = prefix.trimStart().toLowerCase();
+    if (/\s/.test(query))
+        return null;
+    const matches = TASK_WIDGET_ACTIONS.filter((item) => item.value.startsWith(query));
+    return matches.length > 0 ? matches : null;
 }
 function startPolling(ctx) {
     if (!state.enabled)

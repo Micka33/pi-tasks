@@ -1,4 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { resolvePiAgentId } from "../core/agent-id.js";
 import { buildDashboard, type DashboardData, type DashboardList, type DashboardTask, type StatusCounts } from "../core/dashboard.js";
 import { TaskService } from "../core/service.js";
@@ -11,6 +12,14 @@ const COMPACT_WIDGET_LINES = 8;
 const FULL_WIDGET_LINES = PI_MAX_WIDGET_LINES;
 const MAX_INNER_CHARS = 106;
 const MIN_INNER_CHARS = 38;
+
+const TASK_WIDGET_ACTIONS: AutocompleteItem[] = [
+  { value: "on", label: "on", description: "Enable the pi-tasks widget" },
+  { value: "off", label: "off", description: "Disable the pi-tasks widget for this session" },
+  { value: "compact", label: "compact", description: "Show the compact widget layout" },
+  { value: "full", label: "full", description: "Show the full widget layout" },
+  { value: "refresh", label: "refresh", description: "Refresh the widget immediately" },
+];
 
 type WidgetMode = "compact" | "full";
 
@@ -56,6 +65,7 @@ export function registerPiTasksDashboardWidget(pi: ExtensionAPI): void {
 
   pi.registerCommand("task-widget", {
     description: "Control the pi-tasks dashboard widget: /task-widget on|off|compact|full|refresh",
+    getArgumentCompletions: getTaskWidgetArgumentCompletions,
     handler: async (args, ctx) => {
       const action = args.trim().toLowerCase() || "refresh";
 
@@ -92,6 +102,13 @@ export function registerPiTasksDashboardWidget(pi: ExtensionAPI): void {
       }
     },
   });
+}
+
+export function getTaskWidgetArgumentCompletions(prefix: string): AutocompleteItem[] | null {
+  const query = prefix.trimStart().toLowerCase();
+  if (/\s/.test(query)) return null;
+  const matches = TASK_WIDGET_ACTIONS.filter((item) => item.value.startsWith(query));
+  return matches.length > 0 ? matches : null;
 }
 
 function startPolling(ctx: ExtensionContext): void {

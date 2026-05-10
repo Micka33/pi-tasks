@@ -136,7 +136,7 @@ Useful commands:
 /tasks <list_id> full # complete JSON for the list and tasks
 ```
 
-`/tasks <list_id>` supports Pi TUI autocomplete for visible task-list ids. Type `/tasks ` then trigger completion, or start typing a list id/name to filter suggestions.
+`/tasks <list_id>` supports Pi TUI autocomplete for visible task-list ids. Type `/tasks ` then trigger completion, or start typing a list id/name to filter suggestions. `/task-widget` also autocompletes its actions: `on`, `off`, `compact`, `full`, `refresh`.
 
 The widget refreshes on session start, after `task_*` tool calls, and periodically every 10 seconds to catch updates made by other agents or MCP clients.
 
