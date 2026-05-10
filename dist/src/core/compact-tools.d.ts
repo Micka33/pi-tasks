@@ -11,4 +11,5 @@ export declare function dispatchCompactTaskTool(service: TaskService, toolName: 
 export declare function compactToolAction(toolName: string, input: unknown): string | undefined;
 export declare function compactToolCallName(toolName: string, input: unknown): string;
 export declare function compactToolResultEnvelope(toolName: string, input: unknown, result: unknown): Record<string, unknown>;
+export declare function formatCompactToolDisplay(envelope: unknown): string;
 export declare function getTaskHelp(input?: unknown): Record<string, unknown>;

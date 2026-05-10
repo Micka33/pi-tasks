@@ -5,6 +5,8 @@ export const TASK_ITEM_ACTIONS = ["create", "add_many", "update", "reorder", "de
 export const TASK_CLAIM_ACTIONS = ["claim_next", "refresh", "release_expired"];
 export const TASK_AUDIT_ACTIONS = ["get"];
 export const TASK_HELP_ACTIONS = ["all", "workflow", "schemas", "examples"];
+const TASK_ITEM_DISPLAY_LINE_MAX_CHARS = 96;
+const LIST_NAME_DISPLAY_MAX_CHARS = 80;
 export function dispatchCompactTaskTool(service, toolName, input, access) {
     if (toolName === "task_help")
         return getTaskHelp(input);
@@ -47,6 +49,15 @@ export function compactToolResultEnvelope(toolName, input, result) {
         ...(action === undefined ? {} : { action }),
         result,
     };
+}
+export function formatCompactToolDisplay(envelope) {
+    if (!isRecord(envelope))
+        return JSON.stringify(envelope, null, 2);
+    if (envelope.operation === "task_lists.create" && isRecord(envelope.result))
+        return formatCreatedList(envelope.result);
+    if (envelope.operation === "task_items.add_many" && Array.isArray(envelope.result))
+        return formatAddedTasks(envelope.result);
+    return JSON.stringify(envelope, null, 2);
 }
 export function getTaskHelp(input) {
     const rawAction = input === undefined ? undefined : readOptionalAction(input);
@@ -104,6 +115,31 @@ function runTaskClaimsAction(service, request, access) {
 function runTaskAuditAction(service, request, access) {
     assertAllowedAction(request.action, TASK_AUDIT_ACTIONS, "task_audit");
     return service.getPrivateAccessEvents(request.params, access);
+}
+function formatCreatedList(list) {
+    return `✓ Liste créée: ${truncateOneLine(String(list.name), LIST_NAME_DISPLAY_MAX_CHARS)} · ${String(list.visibility)}`;
+}
+function formatAddedTasks(tasks) {
+    const plural = tasks.length > 1;
+    const lines = [`✓ ${tasks.length} tâche${plural ? "s" : ""} ajoutée${plural ? "s" : ""}`];
+    for (const item of tasks) {
+        if (isRecord(item))
+            lines.push(formatAddedTaskLine(item));
+    }
+    return lines.join("\n");
+}
+function formatAddedTaskLine(task) {
+    const title = normalizeOneLine(String(task.title));
+    const description = typeof task.description === "string" ? normalizeOneLine(task.description) : "";
+    const body = description.length > 0 ? `${title} — ${description}` : title;
+    return truncateOneLine(`#${String(task.position)} ${body}`, TASK_ITEM_DISPLAY_LINE_MAX_CHARS);
+}
+function normalizeOneLine(value) {
+    return value.replace(/\s+/g, " ").trim();
+}
+function truncateOneLine(value, maxChars) {
+    const normalized = normalizeOneLine(value);
+    return normalized.length > maxChars ? `${normalized.slice(0, maxChars - 1)}…` : normalized;
 }
 function parseCompactRequest(input) {
     if (!isRecord(input)) {

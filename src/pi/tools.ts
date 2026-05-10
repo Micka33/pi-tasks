@@ -1,6 +1,6 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { TSchema } from "typebox";
-import { compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool } from "../core/compact-tools.js";
+import { compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool, formatCompactToolDisplay } from "../core/compact-tools.js";
 import { PrivateListAccessError, serializeError } from "../core/errors.js";
 import { resolvePiAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
@@ -129,7 +129,7 @@ async function runWithService(
 
 function successResult(result: unknown) {
   return {
-    content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+    content: [{ type: "text" as const, text: formatCompactToolDisplay(result) }],
     details: result,
   };
 }

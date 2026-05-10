@@ -1,4 +1,4 @@
-import { compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool } from "../core/compact-tools.js";
+import { compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool, formatCompactToolDisplay } from "../core/compact-tools.js";
 import { PrivateListAccessError, serializeError } from "../core/errors.js";
 import { resolvePiAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
@@ -101,7 +101,7 @@ async function runWithService(tool, params, ctx, privateBypass) {
 }
 function successResult(result) {
     return {
-        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        content: [{ type: "text", text: formatCompactToolDisplay(result) }],
         details: result,
     };
 }

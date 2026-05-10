@@ -11,6 +11,9 @@ export const TASK_HELP_ACTIONS = ["all", "workflow", "schemas", "examples"] as c
 
 export type CompactToolName = (typeof COMPACT_TOOL_NAMES)[number];
 
+const TASK_ITEM_DISPLAY_LINE_MAX_CHARS = 96;
+const LIST_NAME_DISPLAY_MAX_CHARS = 80;
+
 interface CompactRequest {
   action: string;
   params: Record<string, unknown>;
@@ -61,6 +64,13 @@ export function compactToolResultEnvelope(toolName: string, input: unknown, resu
     ...(action === undefined ? {} : { action }),
     result,
   };
+}
+
+export function formatCompactToolDisplay(envelope: unknown): string {
+  if (!isRecord(envelope)) return JSON.stringify(envelope, null, 2);
+  if (envelope.operation === "task_lists.create" && isRecord(envelope.result)) return formatCreatedList(envelope.result);
+  if (envelope.operation === "task_items.add_many" && Array.isArray(envelope.result)) return formatAddedTasks(envelope.result);
+  return JSON.stringify(envelope, null, 2);
 }
 
 export function getTaskHelp(input?: unknown): Record<string, unknown> {
@@ -123,6 +133,35 @@ function runTaskClaimsAction(service: TaskService, request: CompactRequest, acce
 function runTaskAuditAction(service: TaskService, request: CompactRequest, access: AccessOptions): unknown {
   assertAllowedAction(request.action, TASK_AUDIT_ACTIONS, "task_audit");
   return service.getPrivateAccessEvents(request.params as never, access);
+}
+
+function formatCreatedList(list: Record<string, unknown>): string {
+  return `✓ Liste créée: ${truncateOneLine(String(list.name), LIST_NAME_DISPLAY_MAX_CHARS)} · ${String(list.visibility)}`;
+}
+
+function formatAddedTasks(tasks: unknown[]): string {
+  const plural = tasks.length > 1;
+  const lines = [`✓ ${tasks.length} tâche${plural ? "s" : ""} ajoutée${plural ? "s" : ""}`];
+  for (const item of tasks) {
+    if (isRecord(item)) lines.push(formatAddedTaskLine(item));
+  }
+  return lines.join("\n");
+}
+
+function formatAddedTaskLine(task: Record<string, unknown>): string {
+  const title = normalizeOneLine(String(task.title));
+  const description = typeof task.description === "string" ? normalizeOneLine(task.description) : "";
+  const body = description.length > 0 ? `${title} — ${description}` : title;
+  return truncateOneLine(`#${String(task.position)} ${body}`, TASK_ITEM_DISPLAY_LINE_MAX_CHARS);
+}
+
+function normalizeOneLine(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function truncateOneLine(value: string, maxChars: number): string {
+  const normalized = normalizeOneLine(value);
+  return normalized.length > maxChars ? `${normalized.slice(0, maxChars - 1)}…` : normalized;
 }
 
 function parseCompactRequest(input: unknown): CompactRequest {

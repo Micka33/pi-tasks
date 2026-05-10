@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { compactToolAction, compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool, getTaskHelp } from "../src/core/compact-tools.js";
+import { compactToolAction, compactToolCallName, compactToolResultEnvelope, dispatchCompactTaskTool, formatCompactToolDisplay, getTaskHelp } from "../src/core/compact-tools.js";
 import { PrivateListAccessError, ValidationError } from "../src/core/errors.js";
 import { TaskService } from "../src/core/service.js";
 import type { AccessOptions } from "../src/core/types.js";
@@ -124,6 +124,41 @@ test("compact task help returns workflow, schemas, examples, and all sections", 
 
   const dispatched = dispatchCompactTaskTool({} as TaskService, "task_help", { action: "examples" }, access("agent-a")) as { examples: unknown[] };
   assert.equal(dispatched.examples.length > 0, true);
+});
+
+test("compact tool display is concise for Pi while preserving full details separately", () => {
+  assert.equal(
+    formatCompactToolDisplay({
+      operation: "task_lists.create",
+      tool: "task_lists",
+      action: "create",
+      result: { name: "A list with\nspaces", visibility: "private" },
+    }),
+    "✓ Liste créée: A list with spaces · private",
+  );
+
+  const added = formatCompactToolDisplay({
+    operation: "task_items.add_many",
+    tool: "task_items",
+    action: "add_many",
+    result: [
+      { position: 1, title: "Short", description: null },
+      { position: 2, title: "With description", description: "line one\nline two with a very long explanation that must be truncated before it wraps in Pi output" },
+      "ignored corrupt row",
+    ],
+  });
+  assert.equal(added.split("\n")[0], "✓ 3 tâches ajoutées");
+  assert.equal(added.split("\n")[1], "#1 Short");
+  assert.equal(added.split("\n")[2]?.includes("With description — line one line two"), true);
+  assert.equal(added.split("\n")[2]?.endsWith("…"), true);
+  assert.equal(added.split("\n")[2]!.length <= 96, true);
+
+  assert.equal(
+    formatCompactToolDisplay({ operation: "task_items.add_many", result: [{ position: 1, title: "One", description: "Only one" }] }),
+    "✓ 1 tâche ajoutée\n#1 One — Only one",
+  );
+  assert.equal(formatCompactToolDisplay({ operation: "unknown", result: 1 }), JSON.stringify({ operation: "unknown", result: 1 }, null, 2));
+  assert.equal(formatCompactToolDisplay("plain"), JSON.stringify("plain", null, 2));
 });
 
 test("compact task tools validate tool names, actions, params, and help input", () => {
