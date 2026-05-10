@@ -253,6 +253,20 @@ test("formatDashboard covers empty, hidden, long, duration, and status variants"
   ]);
   assert.equal(formatDashboard(hourClaim, "full").some((line) => line.includes("claim 2h")), true);
 
+  const originalDateNow = Date.now;
+  Date.now = () => Date.parse("2026-01-01T00:00:00.000Z");
+  try {
+    const exactHourClaim = dashboardFromLists("claim-agent", [
+      {
+        list: widgetList("exact-claim", "Exact Claim"),
+        tasks: [widgetTask({ id: "exact-hour-claim", list_id: "exact-claim", title: "Exact hour claim", status: "in_progress", claim_expires_at: "2026-01-01T02:00:00.000Z" })],
+      },
+    ]);
+    assert.equal(formatDashboard(exactHourClaim, "full").some((line) => line.includes("Exact hour claim") && line.includes("claim 2h")), true);
+  } finally {
+    Date.now = originalDateNow;
+  }
+
   const durations = dashboardFromLists("duration-agent", [
     {
       list: widgetList("durations", "Durations"),
