@@ -150,7 +150,7 @@ test("registered dashboard widget handles events, commands, empty data, errors, 
     const noUi = mockWidgetContext(cwd, { hasUI: false, sessionFile });
     await handlers.get("session_start")({}, noUi.ctx);
     await handlers.get("session_tree")({}, noUi.ctx);
-    await handlers.get("tool_execution_end")({ toolName: "task_create" }, noUi.ctx);
+    await handlers.get("tool_execution_end")({ toolName: "task_items" }, noUi.ctx);
     assert.equal(noUi.widgets.length, 0);
 
     const warningCtx = mockWidgetContext(cwd, { sessionManager: {} });
@@ -171,7 +171,7 @@ test("registered dashboard widget handles events, commands, empty data, errors, 
     assert.equal(ctx.widgets.length, 0);
     await handlers.get("session_tree")({}, ctx.ctx);
     assert.equal(ctx.widgets.at(-1)?.key, "pi-tasks");
-    await handlers.get("tool_execution_end")({ toolName: "task_create" }, ctx.ctx);
+    await handlers.get("tool_execution_end")({ toolName: "task_items" }, ctx.ctx);
     assert.equal(ctx.widgets.at(-1)?.key, "pi-tasks");
     assert.deepEqual(ctx.widgets.at(-1)?.options, { placement: "aboveEditor" });
     assert.equal(ctx.statuses.at(-1)?.value?.startsWith("tasks run"), true);
@@ -223,7 +223,7 @@ test("formatDashboard covers empty, hidden, long, duration, and status variants"
   const listC = widgetList("list-c", "List C");
   const futureSeconds = new Date(Date.now() + 30_000).toISOString();
   const futureMinutes = new Date(Date.now() + 90_000).toISOString();
-  const futureHours = new Date(Date.now() + 2 * 60 * 60_000 + 5_000).toISOString();
+  const futureHours = new Date(Date.now() + 125 * 60_000).toISOString();
   const pastMinutes = new Date(Date.now() - 90_000).toISOString();
   const rich = dashboardFromLists(agentId, [
     {

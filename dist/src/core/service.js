@@ -204,7 +204,7 @@ export class TaskService {
                 throw new NotFoundError("task", input.task_id);
             this.getTaskListForAccess(task.list_id, access);
             if (input.status === "in_progress") {
-                throw new ValidationError("task_update cannot set status to in_progress; use task_claim_next instead", {
+                throw new ValidationError("task_items action=update cannot set status to in_progress; use task_claims action=claim_next instead", {
                     task_id: input.task_id,
                 });
             }

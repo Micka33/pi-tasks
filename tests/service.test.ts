@@ -221,7 +221,7 @@ test("claim TTL defaults to 2h and refresh preserves started_at", () => {
 
     assert.throws(
       () => service.updateTask({ task_id: claimed.id, status: "in_progress" }, a),
-      (error) => error instanceof ValidationError && error.message.includes("task_claim_next"),
+      (error) => error instanceof ValidationError && error.message.includes("task_claims action=claim_next"),
     );
 
     service.close();
@@ -328,7 +328,7 @@ test("blocked update keeps responsibility on pausing agent unless explicitly rel
   }
 });
 
-test("task_list_delete soft-deletes list and active tasks while clearing claims", () => {
+test("deleteTaskList soft-deletes list and active tasks while clearing claims", () => {
   const { dbPath, cleanup } = tmpDb();
   try {
     const service = new TaskService({ dbPath });
@@ -509,7 +509,7 @@ test("private lists are hidden, denied, and bypass-audited", () => {
   }
 });
 
-test("task_delete is a soft delete hidden from normal reads", () => {
+test("deleteTask is a soft delete hidden from normal reads", () => {
   const { dbPath, cleanup } = tmpDb();
   try {
     const service = new TaskService({ dbPath });

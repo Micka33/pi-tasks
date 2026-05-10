@@ -147,29 +147,31 @@ Pi currently renders at most 10 widget lines. `pi-tasks` stays under that limit 
 
 ## Tools
 
-- `task_list_create` — create a task list.
-- `task_lists_find` — find visible lists by scope, visibility, owner, creator, or name.
-- `task_list_get` — read a list and tasks in execution order.
-- `task_list_delete` — soft-delete a list and all active tasks in it.
-- `task_private_access_events_get` — read private-list bypass audit events visible to the current agent.
-- `task_create` — add one task.
-- `task_add_many` — add several tasks transactionally.
-- `task_claim_next` — atomically claim the next eligible `todo` task.
-- `task_claim_refresh` — refresh a claim TTL without changing `started_at`.
-- `task_update` — update task fields, `notes`, `outcome`, or status, except `in_progress`. `notes` are task-local working memory; `outcome` is required when closing a task as `done` or `canceled`. `status="blocked"` assigns the paused task to the acting agent by default; pass `assigned_to_agent_id: null` to release it.
-- `task_reorder` — reorder active tasks.
-- `task_release_expired_claims` — release expired claims back to `todo`.
-- `task_delete` — soft-delete a task via `deleted_at`.
+`pi-tasks` exposes a compact tool surface. Each tool takes an `action` plus an optional action-specific `params` object:
+
+- `task_lists` — `create`, `find`, `get`, `delete` task lists.
+- `task_items` — `create`, `add_many`, `update`, `reorder`, `delete` tasks.
+- `task_claims` — `claim_next`, `refresh`, `release_expired` claims.
+- `task_audit` — `get` private-list bypass audit events visible to the current agent.
+- `task_help` — required reference tool for workflow rules, action schemas, and examples (`action`: `all`, `workflow`, `schemas`, or `examples`).
+
+Examples:
+
+```json
+{ "action": "find", "params": { "scope_type": "workspace", "scope_key": "/repo" } }
+{ "action": "claim_next", "params": { "list_id": "release-work" } }
+{ "action": "update", "params": { "task_id": "task-id", "status": "done", "outcome": "Decision: ship. Actions: tests. Final state: green." } }
+```
 
 ## Important workflow rule
 
-`task_claim_next` is the only normal way to move a task to `in_progress`.
+`task_claims` with `action="claim_next"` is the only normal way to move a task to `in_progress`.
 
-`task_update(status = "in_progress")` is rejected intentionally to avoid multi-agent conflicts.
+`task_items` with `action="update"` and `status="in_progress"` is rejected intentionally to avoid multi-agent conflicts.
 
-For long tasks, call `task_claim_refresh` periodically. The default TTL is 2 hours.
+For long tasks, call `task_claims` with `action="refresh"` periodically. The default TTL is 2 hours.
 
-When pausing a task with `task_update(status = "blocked")`, the active claim is cleared but responsibility is kept by default: if `assigned_to_agent_id` is omitted, `pi-tasks` sets it to the agent that paused the task. To fully release the paused task, pass `assigned_to_agent_id: null` in the same `task_update` call. To hand it off, pass another agent id.
+When pausing a task with `task_items` `action="update"` and `status="blocked"`, the active claim is cleared but responsibility is kept by default: if `assigned_to_agent_id` is omitted, `pi-tasks` sets it to the agent that paused the task. To fully release the paused task, pass `assigned_to_agent_id: null` in the same update call. To hand it off, pass another agent id.
 
 Use `notes` as task-local working memory while a task is in progress: important context, choices in progress, blockers, assumptions, and next steps belong there.
 
@@ -184,7 +186,7 @@ Private lists are enforced strictly:
 - Pi can bypass after an explicit user confirmation dialog;
 - MCP tries form elicitation when the host supports it, otherwise returns an access error.
 
-Bypasses are audited in SQLite in `private_access_events`. Read them with `/task-audit [list_id] [full]` in Pi, or the read-only `task_private_access_events_get` tool in Pi/MCP. Reading audit events follows the same privacy model: list-specific reads require access to that list or an explicit user-confirmed bypass; global reads return only events for lists visible to the current agent.
+Bypasses are audited in SQLite in `private_access_events`. Read them with `/task-audit [list_id] [full]` in Pi, or `task_audit` with `action="get"` in Pi/MCP. Reading audit events follows the same privacy model: list-specific reads require access to that list or an explicit user-confirmed bypass; global reads return only events for lists visible to the current agent.
 
 ## Development
 

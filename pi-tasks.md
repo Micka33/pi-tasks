@@ -58,36 +58,33 @@ Un agent peut être :
 | `started_at` | date de début d’exécution |
 | `completed_at` | date de fin si `done` ou `canceled` |
 
-**Outils MCP**
+**Outils Pi/MCP compacts**
 
-| Outil | Fonction |
+Chaque outil prend un `action` et, sauf `task_help`, un objet `params` spécifique à l’action.
+
+| Outil | Actions |
 |---|---|
-| `task_list_create` | créer une nouvelle liste de tâches |
-| `task_lists_find` | retrouver des listes existantes par scope, visibilité ou propriétaire |
-| `task_list_get` | lire une liste et ses tâches dans l’ordre d’exécution |
-| `task_list_delete` | soft-delete une liste et toutes ses tâches actives |
-| `task_private_access_events_get` | lire les événements d’audit de bypass privé visibles pour l’agent courant |
-| `task_create` | ajouter une tâche unique |
-| `task_add_many` | ajouter plusieurs tâches en une fois |
-| `task_claim_next` | réclamer atomiquement la prochaine tâche `todo` |
-| `task_update` | modifier une tâche, ses notes, son outcome ou son statut |
-| `task_reorder` | réordonner des tâches |
-| `task_release_expired_claims` | libérer les claims expirés |
-| `task_delete` | supprimer une tâche |
+| `task_lists` | `create`, `find`, `get`, `delete` |
+| `task_items` | `create`, `add_many`, `update`, `reorder`, `delete` |
+| `task_claims` | `claim_next`, `refresh`, `release_expired` |
+| `task_audit` | `get` |
+| `task_help` | `all`, `workflow`, `schemas`, `examples` |
+
+`task_help` est l’outil de référence obligatoire pour retrouver les règles de workflow, les schémas de `params` par action et des exemples.
 
 **Workflow Agent Standard**
 
-1. L’agent cherche une liste existante avec `task_lists_find`.
-2. Si aucune liste adaptée n’existe, il crée une liste avec `task_list_create`.
-3. Il ajoute les tâches avec `task_create` ou `task_add_many`.
-4. Il appelle `task_claim_next` avec son `agent_id`.
+1. L’agent cherche une liste existante avec `task_lists` + `action = find`.
+2. Si aucune liste adaptée n’existe, il crée une liste avec `task_lists` + `action = create`.
+3. Il ajoute les tâches avec `task_items` + `action = create` ou `add_many`.
+4. Il appelle `task_claims` + `action = claim_next` avec son `agent_id`.
 5. Il exécute la tâche retournée.
-   - Pendant l’exécution, il peut appeler `task_update(notes = ...)` pour stocker la mémoire locale de la tâche : contexte important, choix en cours, blocages, hypothèses et prochaines étapes.
-6. Il appelle `task_update` avec `status = done`, `blocked`, `todo` ou `canceled`.
+   - Pendant l’exécution, il peut appeler `task_items` + `action = update` avec `notes` pour stocker la mémoire locale de la tâche : contexte important, choix en cours, blocages, hypothèses et prochaines étapes.
+6. Il appelle `task_items` + `action = update` avec `status = done`, `blocked`, `todo` ou `canceled`.
    - Si `status = done` ou `canceled`, il doit fournir `outcome` avec les choix/décisions, les actions prises et le résultat obtenu.
    - Si `status = blocked`, le claim actif est libéré mais, par défaut, `assigned_to_agent_id` devient l’agent qui met la tâche en pause.
-   - Pour libérer complètement une tâche mise en pause, l’agent passe explicitement `assigned_to_agent_id = null` dans le même appel `task_update`.
-7. Il répète jusqu’à ce que `task_claim_next` retourne aucune tâche.
+   - Pour libérer complètement une tâche mise en pause, l’agent passe explicitement `assigned_to_agent_id = null` dans le même appel `update`.
+7. Il répète jusqu’à ce que `task_claims` + `action = claim_next` retourne aucune tâche.
 
 **Règles De Partage**
 
@@ -126,4 +123,4 @@ Règles d’affichage :
 - le widget ne dépasse pas la limite TUI de 10 lignes et affiche ses propres lignes `… masquée(s)` au lieu de laisser Pi tronquer brutalement.
 
 **Règle Centrale**
-`task_claim_next` est l’unique manière normale de prendre une tâche à exécuter. Un agent ne doit pas choisir manuellement une tâche depuis `task_list_get` puis la passer lui-même en `in_progress`, car cela peut créer des conflits entre agents.
+`task_claims` + `action = claim_next` est l’unique manière normale de prendre une tâche à exécuter. Un agent ne doit pas choisir manuellement une tâche depuis `task_lists` + `action = get` puis la passer lui-même en `in_progress`, car cela peut créer des conflits entre agents.
