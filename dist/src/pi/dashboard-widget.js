@@ -3,11 +3,11 @@ import { buildDashboard } from "../core/dashboard.js";
 import { TaskService } from "../core/service.js";
 const WIDGET_KEY = "pi-tasks";
 const REFRESH_INTERVAL_MS = 10_000;
-const MAX_COMPACT_LISTS = 5;
-const MAX_COMPACT_MY_TASKS = 6;
-const MAX_FULL_LISTS = 8;
-const MAX_FULL_TASKS_PER_LIST = 8;
-const MAX_LINE_CHARS = 110;
+const PI_MAX_WIDGET_LINES = 10;
+const COMPACT_WIDGET_LINES = 8;
+const FULL_WIDGET_LINES = PI_MAX_WIDGET_LINES;
+const MAX_INNER_CHARS = 106;
+const MIN_INNER_CHARS = 38;
 const state = {
     enabled: true,
     mode: "compact",
@@ -129,70 +129,215 @@ function openForWidget(ctx) {
         warning: resolved.warning,
     };
 }
-function formatDashboard(dashboard, mode) {
-    const lines = [];
-    const agent = shortenAgentId(dashboard.agentId);
-    const activeLists = dashboard.lists.filter((list) => list.totalActiveTasks > 0);
-    const listCount = dashboard.lists.length;
-    const visibleTaskCount = dashboard.totalActiveTasks;
-    lines.push(limitLine(`pi-tasks · agent ${agent} · ${plural(listCount, "list")} · ${plural(visibleTaskCount, "task")} · ` +
-        `mine: ${statusGlyph("in_progress")}${dashboard.myCounts.in_progress} ${statusGlyph("todo")}${dashboard.myCounts.todo} ${statusGlyph("blocked")}${dashboard.myCounts.blocked}`));
-    if (activeLists.length === 0) {
-        lines.push("  no active tasks in visible lists");
-        return lines;
+export function formatDashboard(dashboard, mode) {
+    const title = `pi-tasks · ${shortenAgentId(dashboard.agentId)} · ${plural(dashboard.lists.length, "list")} · ${plural(dashboard.totalActiveTasks, "task")}`;
+    const maxLines = mode === "full" ? FULL_WIDGET_LINES : COMPACT_WIDGET_LINES;
+    const entries = mode === "full" ? buildFullEntries(dashboard) : buildCompactEntries(dashboard);
+    const footer = mode === "full" ? "/task-widget compact · /tasks <list_id>" : "/task-widget full · /tasks <list_id>";
+    return frameEntries(title, entries, footer, maxLines);
+}
+function buildCompactEntries(dashboard) {
+    const budget = COMPACT_WIDGET_LINES - 2;
+    const entries = [];
+    const myTasks = prioritizedMyTasks(dashboard);
+    entries.push(line(`moi · ${formatMineCounts(dashboard.myCounts)}`));
+    const maxMyTasks = Math.min(myTasks.length, 2);
+    for (const item of myTasks.slice(0, maxMyTasks)) {
+        entries.push(line(formatTaskLine(item.task, item.list, { agentId: dashboard.agentId, includeListName: true, mySection: true, indent: "  " })));
     }
-    const listsToShow = activeLists.slice(0, mode === "full" ? MAX_FULL_LISTS : MAX_COMPACT_LISTS);
-    for (const item of listsToShow) {
-        lines.push(formatListLine(item));
-        if (mode === "full") {
-            for (const task of item.tasks.slice(0, MAX_FULL_TASKS_PER_LIST)) {
-                lines.push(formatTaskLine({ task, list: item.list, assignedToAgent: false, claimedByAgent: false }, "    "));
-            }
-            if (item.tasks.length > MAX_FULL_TASKS_PER_LIST) {
-                lines.push(limitLine(`    … ${item.tasks.length - MAX_FULL_TASKS_PER_LIST} more task(s)`));
-            }
+    const hiddenMyTasks = myTasks.length - maxMyTasks;
+    if (hiddenMyTasks > 0 && entries.length < budget - 2) {
+        entries.push(line(`  … ${hiddenMyTasks} autre(s) tâche(s) à moi`));
+    }
+    if (entries.length < budget)
+        entries.push(separator("listes"));
+    const lists = prioritizedLists(dashboard);
+    if (lists.length === 0) {
+        if (entries.length < budget)
+            entries.push(line("aucune tâche visible"));
+        return entries;
+    }
+    const listSlots = budget - entries.length;
+    const listLimit = lists.length > listSlots ? Math.max(0, listSlots - 1) : listSlots;
+    for (const item of lists.slice(0, listLimit)) {
+        entries.push(line(formatListSummary(item)));
+    }
+    const hiddenLists = lists.length - listLimit;
+    if (hiddenLists > 0 && entries.length < budget) {
+        entries.push(line(`… ${hiddenLists} liste(s) masquée(s) · /task-lists`));
+    }
+    return entries;
+}
+function buildFullEntries(dashboard) {
+    const budget = FULL_WIDGET_LINES - 2;
+    const entries = [];
+    const myTasks = prioritizedMyTasks(dashboard);
+    entries.push(line(`moi · ${formatMineCounts(dashboard.myCounts)}`));
+    const maxMyTasks = Math.min(myTasks.length, 2);
+    for (const item of myTasks.slice(0, maxMyTasks)) {
+        entries.push(line(formatTaskLine(item.task, item.list, { agentId: dashboard.agentId, includeListName: true, mySection: true, indent: "  " })));
+    }
+    const hiddenMyTasks = myTasks.length - maxMyTasks;
+    if (hiddenMyTasks > 0 && entries.length < budget - 2) {
+        entries.push(line(`  … ${hiddenMyTasks} autre(s) tâche(s) à moi`));
+    }
+    const lists = prioritizedLists(dashboard);
+    if (lists.length === 0) {
+        if (entries.length < budget)
+            entries.push(line("aucune tâche visible"));
+        return entries;
+    }
+    let hiddenListCount = 0;
+    const hiddenTaskNotes = [];
+    for (let i = 0; i < lists.length; i += 1) {
+        if (entries.length >= budget) {
+            hiddenListCount = lists.length - i;
+            break;
+        }
+        const item = lists[i];
+        entries.push(separator(formatListSummary(item)));
+        const remainingAfterHeader = budget - entries.length;
+        if (remainingAfterHeader <= 0) {
+            hiddenListCount = lists.length - i - 1;
+            break;
+        }
+        const remainingListsAfter = lists.length - i - 1;
+        const reserveForLaterLists = remainingListsAfter > 0 ? 1 : 0;
+        const taskSlots = Math.min(3, Math.max(0, remainingAfterHeader - reserveForLaterLists));
+        const tasks = prioritizedTasksForList(item, dashboard.agentId);
+        const tasksToShow = tasks.slice(0, taskSlots);
+        for (const task of tasksToShow) {
+            entries.push(line(formatTaskLine(task, item.list, { agentId: dashboard.agentId, includeListName: false, mySection: false, indent: "  " })));
+        }
+        const hiddenTasks = tasks.length - tasksToShow.length;
+        if (hiddenTasks > 0) {
+            if (remainingListsAfter === 0 && entries.length < budget)
+                entries.push(line(`  … ${hiddenTasks} tâche(s) masquée(s) dans ${item.list.name}`));
+            else
+                hiddenTaskNotes.push(`${hiddenTasks} tâche(s) dans ${item.list.name}`);
         }
     }
-    if (activeLists.length > listsToShow.length) {
-        lines.push(limitLine(`  … ${activeLists.length - listsToShow.length} more active list(s)`));
+    if (hiddenListCount > 0 || hiddenTaskNotes.length > 0) {
+        const parts = [...hiddenTaskNotes];
+        if (hiddenListCount > 0)
+            parts.push(`${hiddenListCount} liste(s)`);
+        addOmissionLine(entries, budget, `… ${parts.join(" · ")} masquée(s) · /tasks <list_id>`);
     }
-    if (dashboard.myTasks.length > 0) {
-        lines.push("  my tasks:");
-        const myTasks = dashboard.myTasks.slice(0, MAX_COMPACT_MY_TASKS);
-        for (const task of myTasks)
-            lines.push(formatTaskLine(task, "    "));
-        if (dashboard.myTasks.length > myTasks.length) {
-            lines.push(limitLine(`    … ${dashboard.myTasks.length - myTasks.length} more assigned/claimed task(s)`));
-        }
+    return entries;
+}
+function prioritizedMyTasks(dashboard) {
+    return [...dashboard.myTasks].sort((a, b) => compareTasksForDisplay(a.task, b.task) || a.list.name.localeCompare(b.list.name));
+}
+function prioritizedLists(dashboard) {
+    return dashboard.lists
+        .filter((item) => item.totalActiveTasks > 0)
+        .map((item, index) => ({ item, index }))
+        .sort((a, b) => listScore(b.item) - listScore(a.item) || a.index - b.index)
+        .map(({ item }) => item);
+}
+function prioritizedTasksForList(item, agentId) {
+    return [...item.tasks].sort((a, b) => compareTaskOwnership(b, a, agentId) || compareTasksForDisplay(a, b));
+}
+function listScore(item) {
+    const c = item.counts;
+    return item.myTasks.length * 10_000 + c.in_progress * 1_000 + c.blocked * 500 + c.todo * 100 + c.done * 10 + c.canceled * 5 + item.totalActiveTasks;
+}
+function compareTaskOwnership(a, b, agentId) {
+    return Number(isMine(a, agentId)) - Number(isMine(b, agentId));
+}
+function compareTasksForDisplay(a, b) {
+    return statusPriority(a.status) - statusPriority(b.status) || a.position - b.position || a.created_at.localeCompare(b.created_at);
+}
+function statusPriority(status) {
+    switch (status) {
+        case "in_progress":
+            return 0;
+        case "blocked":
+            return 1;
+        case "todo":
+            return 2;
+        case "done":
+            return 3;
+        case "canceled":
+            return 4;
     }
-    else if (mode === "compact") {
-        lines.push("  my tasks: none assigned or claimed");
+}
+function isMine(task, agentId) {
+    return task.claimed_by_agent_id === agentId || task.assigned_to_agent_id === agentId;
+}
+function line(text) {
+    return { kind: "line", text };
+}
+function separator(text) {
+    return { kind: "separator", text };
+}
+function addOmissionLine(entries, budget, text) {
+    if (entries.length < budget) {
+        entries.push(line(text));
+        return;
     }
-    return lines;
+    if (budget > 0)
+        entries[budget - 1] = line(text);
+}
+function frameEntries(title, entries, footer, maxLines) {
+    const bodyBudget = Math.max(1, maxLines - 2);
+    const safeEntries = entries.length <= bodyBudget
+        ? entries
+        : [...entries.slice(0, bodyBudget - 1), line(`… ${entries.length - bodyBudget + 1} ligne(s) masquée(s) · /tasks <list_id>`)];
+    const normalizedTitle = truncateLine(title, MAX_INNER_CHARS);
+    const normalizedFooter = truncateLine(footer, MAX_INNER_CHARS);
+    const normalizedEntries = safeEntries.map((entry) => ({ ...entry, text: truncateLine(entry.text, MAX_INNER_CHARS) }));
+    const width = Math.max(MIN_INNER_CHARS, normalizedTitle.length, normalizedFooter.length, ...normalizedEntries.map((entry) => entry.text.length));
+    return [
+        borderLine("╭", "╮", width, normalizedTitle),
+        ...normalizedEntries.map((entry) => (entry.kind === "separator" ? borderLine("├", "┤", width, entry.text, "─ ") : bodyLine(entry.text, width))),
+        borderLine("╰", "╯", width, normalizedFooter),
+    ];
+}
+function borderLine(left, right, width, label, prefix = " ") {
+    const span = width + 2;
+    const labelText = label ? `${prefix}${label} ` : "";
+    return `${left}${labelText}${"─".repeat(Math.max(0, span - labelText.length))}${right}`;
+}
+function bodyLine(text, width) {
+    return `│ ${text.padEnd(width, " ")} │`;
 }
 function formatStatus(dashboard) {
-    return `tasks ${statusGlyph("in_progress")}${dashboard.myCounts.in_progress}/${dashboard.counts.in_progress} ${statusGlyph("todo")}${dashboard.counts.todo} ${statusGlyph("blocked")}${dashboard.counts.blocked}`;
+    return `tasks run ${dashboard.myCounts.in_progress}/${dashboard.counts.in_progress} todo ${dashboard.counts.todo} blocked ${dashboard.counts.blocked}`;
 }
-function formatListLine(item) {
-    const c = item.counts;
-    return limitLine(`  ${statusGlyph("todo")} ${item.list.name} · ` +
-        `${statusGlyph("todo")}${c.todo} ${statusGlyph("in_progress")}${c.in_progress} ${statusGlyph("blocked")}${c.blocked} ${statusGlyph("done")}${c.done} ${statusGlyph("canceled")}${c.canceled}`);
+function formatMineCounts(counts) {
+    const parts = [`run ${counts.in_progress}`, `todo ${counts.todo}`, `paused ${counts.blocked}`];
+    if (counts.done > 0)
+        parts.push(`done ${counts.done}`);
+    if (counts.canceled > 0)
+        parts.push(`canceled ${counts.canceled}`);
+    return parts.join(" · ");
 }
-function formatTaskLine(item, indent) {
-    const task = item.task;
+function formatListSummary(item) {
+    return `${item.list.name} · ${formatCounts(item.counts)}`;
+}
+function formatCounts(counts) {
+    const parts = [`todo ${counts.todo}`, `run ${counts.in_progress}`, `blocked ${counts.blocked}`, `done ${counts.done}`];
+    if (counts.canceled > 0)
+        parts.push(`canceled ${counts.canceled}`);
+    return parts.join(" · ");
+}
+function formatTaskLine(task, list, options) {
     const markers = [];
-    if (item.claimedByAgent)
-        markers.push("claimed");
-    if (item.assignedToAgent)
-        markers.push("assigned");
+    const mine = isMine(task, options.agentId);
+    if (!options.mySection && mine)
+        markers.push("mine");
+    if (task.status === "blocked")
+        markers.push("paused");
     if (task.status === "in_progress" && task.claim_expires_at)
-        markers.push(`expires ${relativeTime(task.claim_expires_at)}`);
+        markers.push(`claim ${relativeTime(task.claim_expires_at)}`);
     if ((task.status === "done" || task.status === "canceled") && task.started_at && task.completed_at) {
         markers.push(`duration ${durationBetween(task.started_at, task.completed_at)}`);
     }
-    const suffix = markers.length > 0 ? ` · ${markers.join(", ")}` : "";
-    const listPrefix = item.list.name ? ` · ${item.list.name}` : "";
-    return limitLine(`${indent}${statusGlyph(task.status)} ${task.title}${suffix}${listPrefix}`);
+    if (options.includeListName)
+        markers.push(list.name);
+    const suffix = markers.length > 0 ? ` · ${markers.join(" · ")}` : "";
+    return `${options.indent}${statusGlyph(task.status)} ${task.title}${suffix}`;
 }
 function statusGlyph(status) {
     switch (status) {
@@ -248,7 +393,7 @@ function durationBetween(startIso, endIso) {
 function plural(count, singular) {
     return `${count} ${singular}${count === 1 ? "" : "s"}`;
 }
-function limitLine(line) {
-    return line.length > MAX_LINE_CHARS ? `${line.slice(0, MAX_LINE_CHARS - 1)}…` : line;
+function truncateLine(line, maxChars) {
+    return line.length > maxChars ? `${line.slice(0, maxChars - 1)}…` : line;
 }
 //# sourceMappingURL=dashboard-widget.js.map

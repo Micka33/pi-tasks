@@ -99,5 +99,17 @@ Une tâche non assignée peut être réclamée par n’importe quel agent ayant 
 
 Lorsqu’une tâche est mise en pause (`blocked`), elle reste assignée à l’agent qui l’a mise en pause sauf demande explicite de libération (`assigned_to_agent_id = null`) ou de transfert vers un autre agent.
 
+**Interface TUI Pi**
+
+Le plugin Pi affiche un widget encadré au-dessus de l’éditeur quand des listes visibles existent.
+
+Règles d’affichage :
+- les tâches de l’agent courant sont affichées en premier ;
+- les compteurs de listes utilisent un format lisible : `todo N · run N · blocked N · done N` ;
+- les tâches `blocked` sont présentées comme `paused` ;
+- le nom de liste n’est pas répété sur les tâches déjà affichées dans leur groupe ;
+- le cadre est dimensionné selon la ligne affichée la plus longue ;
+- le widget ne dépasse pas la limite TUI de 10 lignes et affiche ses propres lignes `… masquée(s)` au lieu de laisser Pi tronquer brutalement.
+
 **Règle Centrale**
 `task_claim_next` est l’unique manière normale de prendre une tâche à exécuter. Un agent ne doit pas choisir manuellement une tâche depuis `task_list_get` puis la passer lui-même en `in_progress`, car cela peut créer des conflits entre agents.
