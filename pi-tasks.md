@@ -107,6 +107,7 @@ Commandes utiles :
 - `/task-lists` affiche par défaut uniquement `name` et `id` pour retrouver facilement les identifiants de listes ;
 - `/task-lists full` affiche les métadonnées JSON complètes ;
 - `/tasks <list_id>` affiche une vue détaillée lisible d’une liste et de ses tâches : id, agent, dates, description, notes et outcome ;
+- `/tasks <list_id>` propose l’autocomplétion des `list_id` visibles dans la TUI Pi ;
 - `/tasks <list_id> full` affiche le JSON complet ;
 
 Règles d’affichage :

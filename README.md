@@ -136,6 +136,8 @@ Useful commands:
 /tasks <list_id> full # complete JSON for the list and tasks
 ```
 
+`/tasks <list_id>` supports Pi TUI autocomplete for visible task-list ids. Type `/tasks ` then trigger completion, or start typing a list id/name to filter suggestions.
+
 The widget refreshes on session start, after `task_*` tool calls, and periodically every 10 seconds to catch updates made by other agents or MCP clients.
 
 Pi currently renders at most 10 widget lines. `pi-tasks` stays under that limit itself to avoid Pi's generic `widget truncated` message: compact mode uses up to 8 lines, full mode uses up to 10 lines, and hidden content is summarized with explicit `… masquée(s)` lines plus `/tasks <list_id>` hints.
