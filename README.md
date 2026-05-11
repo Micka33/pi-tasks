@@ -20,14 +20,16 @@ The product specification is kept in [`pi-tasks.md`](./pi-tasks.md).
 From npm, using the latest published release:
 
 ```bash
-pi install npm:@mackor/pi-tasks@latest
+pi install npm:@micka33/pi-tasks@latest
 ```
 
 For project-local installation:
 
 ```bash
-pi install -l npm:@mackor/pi-tasks@latest
+pi install -l npm:@micka33/pi-tasks@latest
 ```
+
+Releases are also mirrored to GitHub Packages so they appear on the repository Packages page. To install from GitHub Packages instead of npmjs.org, configure npm's `@micka33` registry to `https://npm.pkg.github.com` first; GitHub may require a token depending on package visibility and client settings.
 
 From this repository instead of npm:
 
@@ -257,6 +259,6 @@ git tag -a v0.0.1 -m "pi-tasks 0.0.1"
 git push origin v0.0.1
 ```
 
-The workflow reads Node.js from `.node-version`, builds `dist/` on the runner, tests, runs `npm pack`, publishes that exact tarball to npm as `@mackor/pi-tasks` using the `NPM_ACCESS_TOKEN` GitHub secret, updates the npm `latest` dist-tag to the released version, uploads the `.tgz` artifact and its SHA256 checksum to the GitHub Release, and force-updates the movable git tag `latest` to the released commit. `NPM_ACCESS_TOKEN` must be an npm token allowed to publish packages in the `mackor` organization (for accounts with 2FA, use an automation/granular publish token). `dist/` is intentionally ignored by git; release artifacts include the generated runtime build.
+The workflow reads Node.js from `.node-version`, builds `dist/` on the runner, tests, runs `npm pack`, publishes that exact tarball to the public npm registry as `@micka33/pi-tasks` using the `NPM_ACCESS_TOKEN` GitHub secret, publishes the same tarball to GitHub Packages using the workflow `GITHUB_TOKEN`, updates the `latest` dist-tag on both registries, uploads the `.tgz` artifact and its SHA256 checksum to the GitHub Release, and force-updates the movable git tag `latest` to the released commit. `NPM_ACCESS_TOKEN` must be an npm token allowed to publish packages in the `micka33` npm organization (for accounts with 2FA, use an automation/granular publish token). The workflow also requires `packages: write` permission so `GITHUB_TOKEN` can publish to `https://npm.pkg.github.com`. `dist/` is intentionally ignored by git; release artifacts include the generated runtime build.
 
 The npm tarball is intentionally minimal: `bin/pi-tasks-mcp.js`, `dist/`, `README.md`, and `package.json`. `package-lock.json` stays in git for reproducible development installs; npm excludes package locks from published package tarballs.

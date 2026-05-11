@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   id-token: write
+  packages: write
 
 jobs:
   release:
@@ -100,6 +101,33 @@ jobs:
           npm dist-tag add "$PACKAGE_NAME@$VERSION" latest
           npm view "$PACKAGE_NAME@$VERSION" version
           npm view "$PACKAGE_NAME" dist-tags.latest
+
+      - name: Publish GitHub package
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          PACKAGE_NAME="$(node -p "require('./package.json').name")"
+          REGISTRY="https://npm.pkg.github.com"
+
+          {
+            echo "@micka33:registry=$REGISTRY"
+            echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}"
+          } >> ~/.npmrc
+
+          if npm view "$PACKAGE_NAME@$VERSION" version --registry="$REGISTRY" >/dev/null 2>&1; then
+            echo "$PACKAGE_NAME@$VERSION is already published to GitHub Packages; skipping publish."
+          else
+            npm publish "./release/$TARBALL" --registry="$REGISTRY" --access public
+          fi
+
+          npm dist-tag add "$PACKAGE_NAME@$VERSION" latest --registry="$REGISTRY"
+          npm view "$PACKAGE_NAME@$VERSION" version --registry="$REGISTRY"
+          npm view "$PACKAGE_NAME" dist-tags.latest --registry="$REGISTRY"
 
       - name: Create GitHub release
         shell: bash

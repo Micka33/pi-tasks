@@ -1,5 +1,5 @@
 {
-  "name": "@mackor/pi-tasks",
+  "name": "@micka33/pi-tasks",
   "version": "0.1.0",
   "description": "Persistent shared task lists for Pi agents and MCP clients.",
   "type": "module",
@@ -14,8 +14,7 @@
   "files": [
     "bin/pi-tasks-mcp.js",
     "dist",
-    "README.md",
-    "package-lock.json"
+    "README.md"
   ],
   "bin": {
     "pi-tasks-mcp": "bin/pi-tasks-mcp.js"
@@ -65,7 +64,6 @@
   },
   "homepage": "https://github.com/Micka33/pi-tasks#readme",
   "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "access": "public"
   }
 }
