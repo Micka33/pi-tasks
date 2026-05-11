@@ -99,8 +99,19 @@ jobs:
 
           npm access set status=public "$PACKAGE_NAME"
           npm dist-tag add "$PACKAGE_NAME@$VERSION" latest
-          npm view "$PACKAGE_NAME@$VERSION" version
-          npm view "$PACKAGE_NAME" dist-tags.latest
+
+          for attempt in {1..12}; do
+            if npm view "$PACKAGE_NAME@$VERSION" version && npm view "$PACKAGE_NAME" dist-tags.latest; then
+              break
+            fi
+
+            if [[ "$attempt" == "12" ]]; then
+              echo "npm package metadata did not become visible after publish" >&2
+              exit 1
+            fi
+
+            sleep 10
+          done
 
       - name: Publish GitHub package
         shell: bash
@@ -114,10 +125,11 @@ jobs:
           PACKAGE_NAME="$(node -p "require('./package.json').name")"
           REGISTRY="https://npm.pkg.github.com"
 
+          NPMRC="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
           {
             echo "@micka33:registry=$REGISTRY"
             echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}"
-          } >> ~/.npmrc
+          } >> "$NPMRC"
 
           if npm view "$PACKAGE_NAME@$VERSION" version --registry="$REGISTRY" >/dev/null 2>&1; then
             echo "$PACKAGE_NAME@$VERSION is already published to GitHub Packages; skipping publish."
@@ -126,8 +138,19 @@ jobs:
           fi
 
           npm dist-tag add "$PACKAGE_NAME@$VERSION" latest --registry="$REGISTRY"
-          npm view "$PACKAGE_NAME@$VERSION" version --registry="$REGISTRY"
-          npm view "$PACKAGE_NAME" dist-tags.latest --registry="$REGISTRY"
+
+          for attempt in {1..12}; do
+            if npm view "$PACKAGE_NAME@$VERSION" version --registry="$REGISTRY" && npm view "$PACKAGE_NAME" dist-tags.latest --registry="$REGISTRY"; then
+              break
+            fi
+
+            if [[ "$attempt" == "12" ]]; then
+              echo "GitHub Packages metadata did not become visible after publish" >&2
+              exit 1
+            fi
+
+            sleep 10
+          done
 
       - name: Create GitHub release
         shell: bash
