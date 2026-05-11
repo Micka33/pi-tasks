@@ -8,6 +8,8 @@ import { PrivateListAccessError, ValidationError } from "../src/core/errors.js";
 import { TaskService } from "../src/core/service.js";
 import type { AccessOptions } from "../src/core/types.js";
 
+process.env.PI_TASKS_LANG = "fr";
+
 function tmpDb(): { dbPath: string; cleanup: () => void } {
   const dir = mkdtempSync(join(tmpdir(), "pi-tasks-compact-tools-"));
   return { dbPath: join(dir, "tasks.sqlite"), cleanup: () => rmSync(dir, { recursive: true, force: true }) };

@@ -7,7 +7,9 @@ import { shortHash } from "../src/core/agent-id.js";
 import { buildDashboard, emptyCounts, type DashboardData } from "../src/core/dashboard.js";
 import { TaskService } from "../src/core/service.js";
 import type { AccessOptions, Task, TaskList, TaskStatus } from "../src/core/types.js";
-import { formatDashboard, getTaskWidgetArgumentCompletions, registerPiTasksDashboardWidget } from "../src/pi/dashboard-widget.js";
+import { formatDashboard, getTaskWidgetArgumentCompletions, registerPiTasksDashboardWidget, terminalDisplayWidth } from "../src/pi/dashboard-widget.js";
+
+process.env.PI_TASKS_LANG = "fr";
 
 function tmpDb(): { dbPath: string; cleanup: () => void } {
   const dir = mkdtempSync(join(tmpdir(), "pi-tasks-widget-"));
@@ -117,6 +119,7 @@ function assertFramedWidget(lines: string[], maxLines: number): void {
   assert.equal(lines[0]?.startsWith("╭"), true);
   assert.equal(lines.at(-1)?.startsWith("╰"), true);
   assert.equal(new Set(lines.map((line) => line.length)).size, 1, "all frame lines should have equal string length");
+  assert.equal(new Set(lines.map((line) => terminalDisplayWidth(line))).size, 1, "all frame lines should have equal display width");
 }
 
 test("task-widget command autocompletes supported actions", () => {
@@ -125,6 +128,40 @@ test("task-widget command autocompletes supported actions", () => {
   assert.deepEqual(getTaskWidgetArgumentCompletions("")?.map((item) => item.value), ["on", "off", "compact", "full", "refresh"]);
   assert.equal(getTaskWidgetArgumentCompletions("compact "), null);
   assert.equal(getTaskWidgetArgumentCompletions("unknown"), null);
+});
+
+test("widget display width accounts for CJK and zero-width marks", () => {
+  assert.equal(terminalDisplayWidth("abc"), 3);
+  assert.equal(terminalDisplayWidth("日本"), 4);
+  assert.equal(terminalDisplayWidth("e\u0301"), 1);
+  assert.equal(terminalDisplayWidth("x\uFE0F"), 1);
+});
+
+test("formatDashboard aligns framed borders with Japanese and Chinese wide characters", () => {
+  const previousLang = process.env.PI_TASKS_LANG;
+  try {
+    const tasks = Array.from({ length: 13 }, (_, index) =>
+      widgetTask({ id: `done-${index}`, list_id: "i18n", position: index + 1, title: `Done ${index}`, status: "done" }),
+    );
+    const dashboard = dashboardFromLists("pi-session:75f25587c1936e24", [
+      { list: widgetList("i18n", "Localisation UI Pi fichier par fichier"), tasks },
+    ]);
+
+    process.env.PI_TASKS_LANG = "jp";
+    const japanese = formatDashboard(dashboard, "compact");
+    assert.equal(japanese.some((line) => line.includes("リスト")), true);
+    assert.equal(new Set(japanese.map((line) => terminalDisplayWidth(line))).size, 1);
+    assert.equal(japanese.every((line) => terminalDisplayWidth(line) <= 110), true);
+
+    process.env.PI_TASKS_LANG = "cn";
+    const chinese = formatDashboard(dashboard, "compact");
+    assert.equal(chinese.some((line) => line.includes("列表")), true);
+    assert.equal(new Set(chinese.map((line) => terminalDisplayWidth(line))).size, 1);
+    assert.equal(chinese.every((line) => terminalDisplayWidth(line) <= 110), true);
+  } finally {
+    if (previousLang === undefined) delete process.env.PI_TASKS_LANG;
+    else process.env.PI_TASKS_LANG = previousLang;
+  }
 });
 
 test("registered dashboard widget handles events, commands, empty data, errors, and shutdown", async () => {
@@ -159,7 +196,7 @@ test("registered dashboard widget handles events, commands, empty data, errors, 
     assert.equal(warningCtx.widgets.at(-1)?.value, undefined);
     assert.equal(warningCtx.statuses.at(-1)?.value, undefined);
     await commands.get("task-widget").handler("refresh", warningCtx.ctx);
-    assert.equal(warningCtx.notifications.at(-1)?.message, "pi-tasks widget: no visible task lists");
+    assert.equal(warningCtx.notifications.at(-1)?.message, "widget pi-tasks : aucune liste de tâches visible");
 
     const service = new TaskService({ cwd });
     service.createTaskList({ id: "widget-list", name: "Widget List", scope_type: "workspace", scope_key: cwd }, access(agentId));
@@ -174,27 +211,27 @@ test("registered dashboard widget handles events, commands, empty data, errors, 
     await handlers.get("tool_execution_end")({ toolName: "task_items" }, ctx.ctx);
     assert.equal(ctx.widgets.at(-1)?.key, "pi-tasks");
     assert.deepEqual(ctx.widgets.at(-1)?.options, { placement: "aboveEditor" });
-    assert.equal(ctx.statuses.at(-1)?.value?.startsWith("tasks run"), true);
+    assert.equal(ctx.statuses.at(-1)?.value?.startsWith("tâches run"), true);
 
     await commands.get("task-widget").handler("bad", ctx.ctx);
-    assert.equal(ctx.notifications.at(-1)?.message, "Usage: /task-widget on|off|compact|full|refresh");
+    assert.equal(ctx.notifications.at(-1)?.message, "Usage : /task-widget on|off|compact|full|refresh");
     await commands.get("task-widget").handler("full", ctx.ctx);
-    assert.equal(ctx.notifications.at(-1)?.message, "pi-tasks widget refreshed (full)");
+    assert.equal(ctx.notifications.at(-1)?.message, "widget pi-tasks rafraîchi (full)");
     await commands.get("task-widget").handler("compact", ctx.ctx);
-    assert.equal(ctx.notifications.at(-1)?.message, "pi-tasks widget refreshed (compact)");
+    assert.equal(ctx.notifications.at(-1)?.message, "widget pi-tasks rafraîchi (compact)");
     await commands.get("task-widget").handler("", ctx.ctx);
-    assert.equal(ctx.notifications.at(-1)?.message, "pi-tasks widget refreshed (compact)");
+    assert.equal(ctx.notifications.at(-1)?.message, "widget pi-tasks rafraîchi (compact)");
     await commands.get("task-widget").handler("off", ctx.ctx);
-    assert.equal(ctx.notifications.at(-1)?.message, "pi-tasks widget disabled for this session");
+    assert.equal(ctx.notifications.at(-1)?.message, "widget pi-tasks désactivé pour cette session");
     await handlers.get("session_start")({}, ctx.ctx);
     await commands.get("task-widget").handler("on", ctx.ctx);
-    assert.equal(ctx.notifications.at(-1)?.message, "pi-tasks widget refreshed (compact)");
+    assert.equal(ctx.notifications.at(-1)?.message, "widget pi-tasks rafraîchi (compact)");
 
     const badCwd = join(cwd, "file-instead-of-directory");
     await import("node:fs").then(({ writeFileSync }) => writeFileSync(badCwd, "not a directory"));
     const errorCtx = mockWidgetContext(badCwd, { sessionFile: join(badCwd, "session.json") });
     await commands.get("task-widget").handler("refresh", errorCtx.ctx);
-    assert.equal(errorCtx.statuses.at(-1)?.value, "pi-tasks: error");
+    assert.equal(errorCtx.statuses.at(-1)?.value, "pi-tasks : erreur");
     assert.equal(errorCtx.notifications.at(-1)?.level, "error");
 
     const stringErrorCtx = mockWidgetContext(cwd, { sessionFile });
@@ -215,7 +252,7 @@ test("registered dashboard widget handles events, commands, empty data, errors, 
 test("formatDashboard covers empty, hidden, long, duration, and status variants", () => {
   const empty = dashboardFromLists("short-agent", []);
   assert.equal(formatDashboard(empty, "compact").some((line) => line.includes("aucune tâche visible")), true);
-  assert.equal(formatDashboard(empty, "full").some((line) => line.includes("0 lists · 0 tasks")), true);
+  assert.equal(formatDashboard(empty, "full").some((line) => line.includes("0 listes · 0 tâches")), true);
 
   const onlyEmptyList = dashboardFromLists("short-agent", [{ list: widgetList("empty-only", "Empty Only"), tasks: [] }]);
   assert.equal(formatDashboard(onlyEmptyList, "compact").some((line) => line.includes("Empty Only · aucune tâche")), true);

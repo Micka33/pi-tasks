@@ -1,8 +1,9 @@
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { TASK_AUDIT_ACTIONS, TASK_CLAIM_ACTIONS, TASK_HELP_ACTIONS, TASK_ITEM_ACTIONS, TASK_LIST_ACTIONS } from "../core/compact-tools.js";
+import { piTasksMessages } from "../i18n/index.js";
 
-const ActionParams = Type.Optional(Type.Any({ description: "Action-specific object. Use task_help for exact schemas and examples." }));
+const ActionParams = Type.Optional(Type.Any({ description: piTasksMessages().schema.actionParamsDescription }));
 
 export const TaskListsParams = Type.Object({
   action: StringEnum(TASK_LIST_ACTIONS),

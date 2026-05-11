@@ -3,6 +3,7 @@ import type { AutocompleteItem, AutocompleteProvider, AutocompleteSuggestions } 
 import { resolvePiAgentId } from "../core/agent-id.js";
 import { TaskService } from "../core/service.js";
 import type { AccessOptions, TaskList } from "../core/types.js";
+import { piTasksMessages } from "../i18n/index.js";
 
 const MAX_LIST_ID_SUGGESTIONS = 20;
 
@@ -52,10 +53,11 @@ export function taskListsToAutocompleteItems(lists: TaskList[], prefix: string):
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .slice(0, MAX_LIST_ID_SUGGESTIONS);
 
+  const separator = piTasksMessages().autocomplete.separator;
   return scored.map(({ list }) => ({
     value: list.id,
     label: list.id,
-    description: `${list.name} · ${list.visibility} · ${list.scope_type}`,
+    description: `${list.name}${separator}${list.visibility}${separator}${list.scope_type}`,
   }));
 }
 

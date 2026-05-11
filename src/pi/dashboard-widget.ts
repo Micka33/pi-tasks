@@ -4,6 +4,7 @@ import { resolvePiAgentId } from "../core/agent-id.js";
 import { buildDashboard, type DashboardData, type DashboardList, type DashboardTask, type StatusCounts } from "../core/dashboard.js";
 import { TaskService } from "../core/service.js";
 import type { AccessOptions, Task, TaskList, TaskStatus } from "../core/types.js";
+import { piTasksMessages, pluralWord, type PluralForms } from "../i18n/index.js";
 
 const WIDGET_KEY = "pi-tasks";
 const REFRESH_INTERVAL_MS = 10_000;
@@ -13,13 +14,16 @@ const FULL_WIDGET_LINES = PI_MAX_WIDGET_LINES;
 const MAX_INNER_CHARS = 106;
 const MIN_INNER_CHARS = 38;
 
-const TASK_WIDGET_ACTIONS: AutocompleteItem[] = [
-  { value: "on", label: "on", description: "Enable the pi-tasks widget" },
-  { value: "off", label: "off", description: "Disable the pi-tasks widget for this session" },
-  { value: "compact", label: "compact", description: "Show the compact widget layout" },
-  { value: "full", label: "full", description: "Show the full widget layout" },
-  { value: "refresh", label: "refresh", description: "Refresh the widget immediately" },
-];
+function taskWidgetActions(): AutocompleteItem[] {
+  const actions = piTasksMessages().widget.actions;
+  return [
+    { value: "on", label: "on", description: actions.on },
+    { value: "off", label: "off", description: actions.off },
+    { value: "compact", label: "compact", description: actions.compact },
+    { value: "full", label: "full", description: actions.full },
+    { value: "refresh", label: "refresh", description: actions.refresh },
+  ];
+}
 
 type WidgetMode = "compact" | "full";
 
@@ -64,10 +68,11 @@ export function registerPiTasksDashboardWidget(pi: ExtensionAPI): void {
   });
 
   pi.registerCommand("task-widget", {
-    description: "Control the pi-tasks dashboard widget: /task-widget on|off|compact|full|refresh",
+    description: piTasksMessages().widget.commandDescription,
     getArgumentCompletions: getTaskWidgetArgumentCompletions,
     handler: async (args, ctx) => {
       const action = args.trim().toLowerCase() || "refresh";
+      const notifications = piTasksMessages().widget.notifications;
 
       switch (action) {
         case "on":
@@ -80,7 +85,7 @@ export function registerPiTasksDashboardWidget(pi: ExtensionAPI): void {
           stopPolling();
           ctx.ui.setWidget(WIDGET_KEY, undefined);
           ctx.ui.setStatus(WIDGET_KEY, undefined);
-          ctx.ui.notify("pi-tasks widget disabled for this session", "info");
+          ctx.ui.notify(notifications.disabled, "info");
           break;
         case "compact":
           state.enabled = true;
@@ -98,7 +103,7 @@ export function registerPiTasksDashboardWidget(pi: ExtensionAPI): void {
           refreshWidget(ctx, { notify: true });
           break;
         default:
-          ctx.ui.notify("Usage: /task-widget on|off|compact|full|refresh", "error");
+          ctx.ui.notify(notifications.usage, "error");
       }
     },
   });
@@ -107,7 +112,7 @@ export function registerPiTasksDashboardWidget(pi: ExtensionAPI): void {
 export function getTaskWidgetArgumentCompletions(prefix: string): AutocompleteItem[] | null {
   const query = prefix.trimStart().toLowerCase();
   if (/\s/.test(query)) return null;
-  const matches = TASK_WIDGET_ACTIONS.filter((item) => item.value.startsWith(query));
+  const matches = taskWidgetActions().filter((item) => item.value.startsWith(query));
   return matches.length > 0 ? matches : null;
 }
 
@@ -126,6 +131,7 @@ function stopPolling(): void {
 
 function refreshWidget(ctx: ExtensionContext, options: { notify?: boolean } = {}): void {
   if (!state.enabled) return;
+  const notifications = piTasksMessages().widget.notifications;
 
   try {
     const { service, access, warning } = openForWidget(ctx);
@@ -139,20 +145,20 @@ function refreshWidget(ctx: ExtensionContext, options: { notify?: boolean } = {}
       if (dashboard.lists.length === 0) {
         ctx.ui.setWidget(WIDGET_KEY, undefined);
         ctx.ui.setStatus(WIDGET_KEY, undefined);
-        if (options.notify) ctx.ui.notify("pi-tasks widget: no visible task lists", "info");
+        if (options.notify) ctx.ui.notify(notifications.noVisibleLists, "info");
         return;
       }
 
       ctx.ui.setWidget(WIDGET_KEY, formatDashboard(dashboard, state.mode), { placement: "aboveEditor" });
       ctx.ui.setStatus(WIDGET_KEY, formatStatus(dashboard));
-      if (options.notify) ctx.ui.notify(`pi-tasks widget refreshed (${state.mode})`, "info");
+      if (options.notify) ctx.ui.notify(`${notifications.refreshedPrefix} (${state.mode})`, "info");
     } finally {
       service.close();
     }
   } catch (error) {
-    ctx.ui.setStatus(WIDGET_KEY, "pi-tasks: error");
+    ctx.ui.setStatus(WIDGET_KEY, notifications.errorStatus);
     if (options.notify) {
-      ctx.ui.notify(`pi-tasks widget refresh failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+      ctx.ui.notify(`${notifications.refreshFailedPrefix}: ${error instanceof Error ? error.message : String(error)}`, "error");
     }
   }
 }
@@ -168,10 +174,11 @@ function openForWidget(ctx: ExtensionContext): { service: TaskService; access: A
 }
 
 export function formatDashboard(dashboard: DashboardData, mode: WidgetMode): string[] {
-  const title = `pi-tasks · ${shortenAgentId(dashboard.agentId)} · ${plural(dashboard.lists.length, "list")} · ${plural(dashboard.totalActiveTasks, "task")}`;
+  const ui = piTasksMessages().widget;
+  const title = `pi-tasks · ${shortenAgentId(dashboard.agentId)} · ${plural(dashboard.lists.length, ui.title.list)} · ${plural(dashboard.totalActiveTasks, ui.title.task)}`;
   const maxLines = mode === "full" ? FULL_WIDGET_LINES : COMPACT_WIDGET_LINES;
   const entries = mode === "full" ? buildFullEntries(dashboard) : buildCompactEntries(dashboard);
-  const footer = mode === "full" ? "/task-widget compact · /tasks <list_id>" : "/task-widget full · /tasks <list_id>";
+  const footer = mode === "full" ? ui.footer.compact : ui.footer.full;
 
   return frameEntries(title, entries, footer, maxLines);
 }
@@ -180,8 +187,9 @@ function buildCompactEntries(dashboard: DashboardData): FrameEntry[] {
   const budget = COMPACT_WIDGET_LINES - 2;
   const entries: FrameEntry[] = [];
   const myTasks = prioritizedMyTasks(dashboard);
+  const ui = piTasksMessages().widget;
 
-  entries.push(line(`moi · ${formatMineCounts(dashboard.myCounts)}`));
+  entries.push(line(`${ui.sections.mine} · ${formatMineCounts(dashboard.myCounts)}`));
 
   const maxMyTasks = Math.min(myTasks.length, 2);
   for (const item of myTasks.slice(0, maxMyTasks)) {
@@ -189,14 +197,14 @@ function buildCompactEntries(dashboard: DashboardData): FrameEntry[] {
   }
   const hiddenMyTasks = myTasks.length - maxMyTasks;
   if (hiddenMyTasks > 0 && entries.length < budget - 2) {
-    entries.push(line(`  … ${hiddenMyTasks} autre(s) tâche(s) à moi`));
+    entries.push(line(`  … ${hiddenMyTasks} ${ui.hidden.otherMineTasks}`));
   }
 
-  if (entries.length < budget) entries.push(separator("listes"));
+  if (entries.length < budget) entries.push(separator(ui.sections.lists));
 
   const lists = prioritizedLists(dashboard);
   if (lists.length === 0) {
-    if (entries.length < budget) entries.push(line("aucune tâche visible"));
+    if (entries.length < budget) entries.push(line(ui.empty.noVisibleTasks));
     return entries;
   }
 
@@ -208,7 +216,7 @@ function buildCompactEntries(dashboard: DashboardData): FrameEntry[] {
 
   const hiddenLists = lists.length - listLimit;
   if (hiddenLists > 0 && entries.length < budget) {
-    entries.push(line(`… ${hiddenLists} liste(s) masquée(s) · /task-lists`));
+    entries.push(line(`… ${hiddenLists} ${ui.hidden.lists} · /task-lists`));
   }
 
   return entries;
@@ -218,8 +226,9 @@ function buildFullEntries(dashboard: DashboardData): FrameEntry[] {
   const budget = FULL_WIDGET_LINES - 2;
   const entries: FrameEntry[] = [];
   const myTasks = prioritizedMyTasks(dashboard);
+  const ui = piTasksMessages().widget;
 
-  entries.push(line(`moi · ${formatMineCounts(dashboard.myCounts)}`));
+  entries.push(line(`${ui.sections.mine} · ${formatMineCounts(dashboard.myCounts)}`));
 
   const maxMyTasks = Math.min(myTasks.length, 2);
   for (const item of myTasks.slice(0, maxMyTasks)) {
@@ -227,12 +236,12 @@ function buildFullEntries(dashboard: DashboardData): FrameEntry[] {
   }
   const hiddenMyTasks = myTasks.length - maxMyTasks;
   if (hiddenMyTasks > 0 && entries.length < budget - 2) {
-    entries.push(line(`  … ${hiddenMyTasks} autre(s) tâche(s) à moi`));
+    entries.push(line(`  … ${hiddenMyTasks} ${ui.hidden.otherMineTasks}`));
   }
 
   const lists = prioritizedLists(dashboard);
   if (lists.length === 0) {
-    if (entries.length < budget) entries.push(line("aucune tâche visible"));
+    if (entries.length < budget) entries.push(line(ui.empty.noVisibleTasks));
     return entries;
   }
 
@@ -261,15 +270,15 @@ function buildFullEntries(dashboard: DashboardData): FrameEntry[] {
 
     const hiddenTasks = tasks.length - tasksToShow.length;
     if (hiddenTasks > 0) {
-      if (remainingListsAfter === 0 && entries.length < budget) entries.push(line(`  … ${hiddenTasks} tâche(s) masquée(s) dans ${item.list.name}`));
-      else hiddenTaskNotes.push(`${hiddenTasks} tâche(s) dans ${item.list.name}`);
+      if (remainingListsAfter === 0 && entries.length < budget) entries.push(line(`  … ${hiddenTasks} ${ui.hidden.tasksHiddenInList} ${item.list.name}`));
+      else hiddenTaskNotes.push(`${hiddenTasks} ${ui.hidden.tasksInList} ${item.list.name}`);
     }
   }
 
   if (hiddenListCount > 0 || hiddenTaskNotes.length > 0) {
     const parts = [...hiddenTaskNotes];
-    if (hiddenListCount > 0) parts.push(`${hiddenListCount} liste(s)`);
-    addOmissionLine(entries, budget, `… ${parts.join(" · ")} masquée(s) · /tasks <list_id>`);
+    if (hiddenListCount > 0) parts.push(plural(hiddenListCount, ui.title.list));
+    addOmissionLine(entries, budget, `… ${parts.join(" · ")} ${ui.hidden.summarySuffix} · /tasks <list_id>`);
   }
 
   return entries;
@@ -347,9 +356,9 @@ function frameEntries(title: string, entries: FrameEntry[], footer: string, maxL
   const normalizedEntries = safeEntries.map((entry) => ({ ...entry, text: truncateLine(entry.text, MAX_INNER_CHARS) }));
   const width = Math.max(
     MIN_INNER_CHARS,
-    normalizedTitle.length,
-    normalizedFooter.length,
-    ...normalizedEntries.map((entry) => entry.text.length),
+    terminalDisplayWidth(normalizedTitle),
+    terminalDisplayWidth(normalizedFooter),
+    ...normalizedEntries.map((entry) => terminalDisplayWidth(entry.text)),
   );
 
   return [
@@ -362,33 +371,37 @@ function frameEntries(title: string, entries: FrameEntry[], footer: string, maxL
 function borderLine(left: string, right: string, width: number, label: string, prefix = " "): string {
   const span = width + 2;
   const labelText = `${prefix}${label} `;
-  const fillWidth = span > labelText.length ? span - labelText.length : 0;
+  const fillWidth = Math.max(0, span - terminalDisplayWidth(labelText));
   return `${left}${labelText}${"─".repeat(fillWidth)}${right}`;
 }
 
 function bodyLine(text: string, width: number): string {
-  return `│ ${text.padEnd(width, " ")} │`;
+  return `│ ${padEndDisplay(text, width)} │`;
 }
 
 function formatStatus(dashboard: DashboardData): string {
-  return `tasks run ${dashboard.myCounts.in_progress}/${dashboard.counts.in_progress} todo ${dashboard.counts.todo} blocked ${dashboard.counts.blocked}`;
+  const ui = piTasksMessages().widget.statusLine;
+  return `${ui.tasks} ${ui.run} ${dashboard.myCounts.in_progress}/${dashboard.counts.in_progress} ${ui.todo} ${dashboard.counts.todo} ${ui.blocked} ${dashboard.counts.blocked}`;
 }
 
 function formatMineCounts(counts: StatusCounts): string {
-  const parts = [`run ${counts.in_progress}`, `todo ${counts.todo}`, `paused ${counts.blocked}`];
-  if (counts.done > 0) parts.push(`done ${counts.done}`);
-  if (counts.canceled > 0) parts.push(`canceled ${counts.canceled}`);
+  const labels = piTasksMessages().widget.counts;
+  const parts = [`${labels.run} ${counts.in_progress}`, `${labels.todo} ${counts.todo}`, `${labels.paused} ${counts.blocked}`];
+  if (counts.done > 0) parts.push(`${labels.done} ${counts.done}`);
+  if (counts.canceled > 0) parts.push(`${labels.canceled} ${counts.canceled}`);
   return parts.join(" · ");
 }
 
 function formatListSummary(item: DashboardList): string {
-  if (item.totalActiveTasks === 0) return `${item.list.name} · aucune tâche`;
+  const empty = piTasksMessages().widget.empty.listNoTasks;
+  if (item.totalActiveTasks === 0) return `${item.list.name} · ${empty}`;
   return `${item.list.name} · ${formatCounts(item.counts)}`;
 }
 
 function formatCounts(counts: StatusCounts): string {
-  const parts = [`todo ${counts.todo}`, `run ${counts.in_progress}`, `blocked ${counts.blocked}`, `done ${counts.done}`];
-  if (counts.canceled > 0) parts.push(`canceled ${counts.canceled}`);
+  const labels = piTasksMessages().widget.counts;
+  const parts = [`${labels.todo} ${counts.todo}`, `${labels.run} ${counts.in_progress}`, `${labels.blocked} ${counts.blocked}`, `${labels.done} ${counts.done}`];
+  if (counts.canceled > 0) parts.push(`${labels.canceled} ${counts.canceled}`);
   return parts.join(" · ");
 }
 
@@ -400,11 +413,12 @@ function formatTaskLine(
   const markers: string[] = [];
   const mine = isMine(task, options.agentId);
 
-  if (!options.mySection && mine) markers.push("mine");
-  if (task.status === "blocked") markers.push("paused");
-  if (task.status === "in_progress" && task.claim_expires_at) markers.push(`claim ${relativeTime(task.claim_expires_at)}`);
+  const ui = piTasksMessages().widget.markers;
+  if (!options.mySection && mine) markers.push(ui.mine);
+  if (task.status === "blocked") markers.push(ui.paused);
+  if (task.status === "in_progress" && task.claim_expires_at) markers.push(`${ui.claim} ${relativeTime(task.claim_expires_at)}`);
   if ((task.status === "done" || task.status === "canceled") && task.started_at && task.completed_at) {
-    markers.push(`duration ${durationBetween(task.started_at, task.completed_at)}`);
+    markers.push(`${ui.duration} ${durationBetween(task.started_at, task.completed_at)}`);
   }
   if (options.includeListName) markers.push(list.name);
 
@@ -459,10 +473,47 @@ function durationBetween(startIso: string, endIso: string): string {
   return restMinutes === 0 ? `${hours}h` : `${hours}h${restMinutes}m`;
 }
 
-function plural(count: number, singular: string): string {
-  return `${count} ${singular}${count === 1 ? "" : "s"}`;
+function plural(count: number, forms: PluralForms): string {
+  return `${count} ${pluralWord(forms, count)}`;
 }
 
-function truncateLine(line: string, maxChars: number): string {
-  return line.length > maxChars ? `${line.slice(0, maxChars - 1)}…` : line;
+function truncateLine(line: string, maxWidth: number): string {
+  if (terminalDisplayWidth(line) <= maxWidth) return line;
+
+  const ellipsis = "…";
+  const ellipsisWidth = terminalDisplayWidth(ellipsis);
+  let width = 0;
+  let output = "";
+  for (const char of line) {
+    const nextWidth = width + charDisplayWidth(char);
+    if (nextWidth + ellipsisWidth > maxWidth) break;
+    output += char;
+    width = nextWidth;
+  }
+  return `${output}${ellipsis}`;
+}
+
+function padEndDisplay(value: string, width: number): string {
+  const padding = Math.max(0, width - terminalDisplayWidth(value));
+  return `${value}${" ".repeat(padding)}`;
+}
+
+export function terminalDisplayWidth(value: string): number {
+  let width = 0;
+  for (const char of value) width += charDisplayWidth(char);
+  return width;
+}
+
+function charDisplayWidth(char: string): number {
+  if (isZeroWidthChar(char)) return 0;
+  if (isWideChar(char)) return 2;
+  return 1;
+}
+
+function isZeroWidthChar(char: string): boolean {
+  return /\p{Mark}/u.test(char) || /[\u200D\uFE00-\uFE0F]/u.test(char);
+}
+
+function isWideChar(char: string): boolean {
+  return /[\u1100-\u115F\u2329\u232A\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE10-\uFE19\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6\u{1F300}-\u{1FAFF}]/u.test(char);
 }

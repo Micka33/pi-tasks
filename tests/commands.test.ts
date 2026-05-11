@@ -6,8 +6,24 @@ import test from "node:test";
 import { shortHash } from "../src/core/agent-id.js";
 import { PrivateListAccessError } from "../src/core/errors.js";
 import { TaskService } from "../src/core/service.js";
-import { formatTaskAuditCommandOutput, formatTaskListDeleteCommandOutput, formatTaskListsCommandOutput, formatTasksCommandOutput, registerPiTaskCommands } from "../src/pi/commands.js";
 import type { AccessOptions, PrivateAccessEvent, Task, TaskList } from "../src/core/types.js";
+import { setPiTasksLocaleOverride } from "../src/i18n/index.js";
+import {
+  formatTaskAuditCommandOutput,
+  formatTaskLanguageChangedOutput,
+  formatTaskLanguageCommandOutput,
+  formatTaskListDeleteCommandOutput,
+  formatTaskListsCommandOutput,
+  formatTasksCommandOutput,
+  formatUnsupportedTaskLanguageOutput,
+  getTaskLanguageArgumentCompletions,
+  registerPiTaskCommands,
+} from "../src/pi/commands.js";
+
+process.env.PI_TASKS_LANG = "en";
+
+const LOCALES_CSV = "en, fr, de, es, it, pl, ru, jp, cn";
+const LOCALES_PIPE = "en|fr|de|es|it|pl|ru|jp|cn";
 
 function tmpCwd(): { cwd: string; cleanup: () => void } {
   const cwd = mkdtempSync(join(tmpdir(), "pi-tasks-commands-"));
@@ -117,7 +133,35 @@ test("/task-audit output is readable and handles empty results", () => {
   );
 });
 
-test("registered Pi task commands handle readable, JSON, usage, and bypass paths", async () => {
+function resetLocaleOverride(): void {
+  setPiTasksLocaleOverride(undefined);
+}
+
+test("/task-language formats status, errors, changes, and autocomplete", () => {
+  resetLocaleOverride();
+  try {
+    assert.deepEqual(getTaskLanguageArgumentCompletions("")?.map((item) => item.value), ["en", "fr", "de", "es", "it", "pl", "ru", "jp", "cn"]);
+    assert.deepEqual(getTaskLanguageArgumentCompletions("f"), [{ value: "fr", label: "fr", description: "French" }]);
+    assert.deepEqual(getTaskLanguageArgumentCompletions("d"), [{ value: "de", label: "de", description: "German" }]);
+    assert.equal(getTaskLanguageArgumentCompletions("fr "), null);
+    assert.equal(getTaskLanguageArgumentCompletions("xx"), null);
+
+    assert.equal(formatTaskLanguageCommandOutput(), `Current Pi UI language: en\nAvailable languages: ${LOCALES_CSV}\nUsage: /task-language ${LOCALES_PIPE}`);
+    assert.equal(formatUnsupportedTaskLanguageOutput("xx"), `Unsupported Pi UI language: xx\nAvailable languages: ${LOCALES_CSV}\nUsage: /task-language ${LOCALES_PIPE}`);
+
+    setPiTasksLocaleOverride("fr");
+    assert.equal(formatTaskLanguageChangedOutput("fr"), "Langue de l’UI Pi définie sur fr.\nUtilisez /task-widget refresh pour redessiner le widget ; les labels de commandes/tools peuvent nécessiter /reload.");
+    assert.equal(formatTaskLanguageCommandOutput(), `Langue actuelle de l’UI Pi : fr\nLangues disponibles : ${LOCALES_CSV}\nUsage : /task-language ${LOCALES_PIPE}`);
+    assert.deepEqual(getTaskLanguageArgumentCompletions("e"), [
+      { value: "en", label: "en", description: "anglais" },
+      { value: "es", label: "es", description: "espagnol" },
+    ]);
+  } finally {
+    resetLocaleOverride();
+  }
+});
+
+test("registered Pi task commands handle readable, JSON, usage, language, and bypass paths", async () => {
   const { cwd, cleanup } = tmpCwd();
   const sessionFile = join(cwd, "session.json");
   const agentId = `pi-session:${shortHash(sessionFile)}`;
@@ -133,7 +177,7 @@ test("registered Pi task commands handle readable, JSON, usage, and bypass paths
 
     const commands = new Map<string, any>();
     registerPiTaskCommands({ registerCommand: (name: string, definition: any) => commands.set(name, definition) } as any);
-    assert.deepEqual([...commands.keys()], ["task-store", "task-agent", "task-lists", "tasks", "task-list-delete", "task-audit"]);
+    assert.deepEqual([...commands.keys()], ["task-store", "task-agent", "task-language", "task-lists", "tasks", "task-list-delete", "task-audit"]);
 
     const base = mockCommandContext(cwd, { sessionFile });
     await commands.get("task-store").handler("", base.ctx);
@@ -148,6 +192,17 @@ test("registered Pi task commands handle readable, JSON, usage, and bypass paths
 
     await commands.get("task-agent").handler("", base.ctx);
     assert.equal(base.notifications.at(-1)?.message, agentId);
+
+    await commands.get("task-language").handler("", base.ctx);
+    assert.equal(base.notifications.at(-1)?.message, `Current Pi UI language: en\nAvailable languages: ${LOCALES_CSV}\nUsage: /task-language ${LOCALES_PIPE}`);
+    await commands.get("task-language").handler("xx", base.ctx);
+    assert.equal(base.notifications.at(-1)?.message, `Unsupported Pi UI language: xx\nAvailable languages: ${LOCALES_CSV}\nUsage: /task-language ${LOCALES_PIPE}`);
+    await commands.get("task-language").handler("fr", base.ctx);
+    assert.equal(base.notifications.at(-1)?.message.startsWith("Langue de l’UI Pi définie sur fr."), true);
+    await commands.get("task-lists").handler("bad", base.ctx);
+    assert.equal(base.notifications.at(-1)?.message, "Usage : /task-lists [full]");
+    await commands.get("task-language").handler("en", base.ctx);
+    assert.equal(base.notifications.at(-1)?.message.startsWith("Pi UI language set to en."), true);
 
     await commands.get("task-lists").handler("bad", base.ctx);
     assert.equal(base.notifications.at(-1)?.message, "Usage: /task-lists [full]");
@@ -199,6 +254,7 @@ test("registered Pi task commands handle readable, JSON, usage, and bypass paths
     await commands.get("task-list-delete").handler("shared-list", base.ctx);
     assert.equal(base.notifications.at(-1)?.message.includes("Deleted task list:"), true);
   } finally {
+    resetLocaleOverride();
     cleanup();
   }
 });

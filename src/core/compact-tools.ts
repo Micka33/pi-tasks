@@ -1,3 +1,4 @@
+import { formatCount, formatPlural, piTasksMessages } from "../i18n/index.js";
 import { ValidationError } from "./errors.js";
 import type { AccessOptions } from "./types.js";
 import type { TaskService } from "./service.js";
@@ -166,13 +167,14 @@ function runTaskAuditAction(service: TaskService, request: CompactRequest, acces
 
 function unwrapDisplayResult(result: unknown): { result: unknown; prefix: string } {
   if (isRecord(result) && result.private_access_bypassed === true) {
-    return { result: result.result, prefix: "⚠ Accès privé confirmé\n" };
+    return { result: result.result, prefix: piTasksMessages().compact.privateAccessConfirmed };
   }
   return { result, prefix: "" };
 }
 
 function formatCreatedList(list: Record<string, unknown>): string {
-  return `✓ Liste créée: ${truncateOneLine(String(list.name), LIST_NAME_DISPLAY_MAX_CHARS)} · ${String(list.visibility)}`;
+  const ui = piTasksMessages().compact;
+  return `${ui.listCreated} ${truncateOneLine(String(list.name), LIST_NAME_DISPLAY_MAX_CHARS)} · ${String(list.visibility)}`;
 }
 
 function formatFoundTaskLists(lists: unknown[]): string {
@@ -181,14 +183,14 @@ function formatFoundTaskLists(lists: unknown[]): string {
     visibility: truncateOneLine(String(list.visibility), "private".length),
     id: truncateOneLine(String(list.id), TASK_LIST_FIND_ID_MAX_CHARS),
   }));
-  if (rows.length === 0) return "Aucune liste trouvée.";
+  const ui = piTasksMessages().compact;
+  if (rows.length === 0) return ui.noListsFound;
 
-  const plural = rows.length > 1;
-  const nameWidth = Math.max("NAME".length, ...rows.map((row) => row.name.length));
-  const visibilityWidth = "VISIBILITY".length;
+  const nameWidth = Math.max(ui.headers.name.length, ...rows.map((row) => row.name.length));
+  const visibilityWidth = ui.headers.visibility.length;
   return [
-    `✓ ${rows.length} liste${plural ? "s" : ""} trouvée${plural ? "s" : ""}`,
-    `  ${"NAME".padEnd(nameWidth)}  ${"VISIBILITY".padEnd(visibilityWidth)}  ID`,
+    formatPlural(ui.listsFound, rows.length),
+    `  ${ui.headers.name.padEnd(nameWidth)}  ${ui.headers.visibility.padEnd(visibilityWidth)}  ${ui.headers.id}`,
     ...rows.map((row) => `• ${row.name.padEnd(nameWidth)}  ${row.visibility.padEnd(visibilityWidth)}  ${row.id}`),
   ].join("\n");
 }
@@ -205,14 +207,15 @@ function formatTaskListWithTasks(result: Record<string, unknown>): string {
     id: shortId(task.id),
     title: normalizeOneLine(String(task.title)),
   }));
+  const ui = piTasksMessages().compact;
   const positionWidth = Math.max("#".length, ...rows.map((row) => row.position.length));
-  const statusWidth = Math.max("STATUS".length, ...rows.map((row) => row.status.length));
-  const idWidth = Math.max("ID".length, ...rows.map((row) => row.id.length));
+  const statusWidth = Math.max(ui.headers.status.length, ...rows.map((row) => row.status.length));
+  const idWidth = Math.max(ui.headers.id.length, ...rows.map((row) => row.id.length));
   return [
     header,
     formatListTaskStatusSummary(tasks),
     "",
-    `  ${"#".padStart(positionWidth)}  ${"STATUS".padEnd(statusWidth)}  ${"ID".padEnd(idWidth)}  TITLE`,
+    `  ${"#".padStart(positionWidth)}  ${ui.headers.status.padEnd(statusWidth)}  ${ui.headers.id.padEnd(idWidth)}  ${ui.headers.title}`,
     ...rows.map((row) => formatTaskListRow(row, { positionWidth, statusWidth, idWidth })),
   ].join("\n");
 }
@@ -223,12 +226,13 @@ function formatTaskListRow(row: { position: string; status: string; id: string; 
 }
 
 function formatListTaskStatusSummary(tasks: Array<Record<string, unknown>>): string {
+  const labels = piTasksMessages().compact.statuses;
   const counts: Array<[string, number]> = [
-    ["todo", countTasksWithStatus(tasks, "todo")],
-    ["run", countTasksWithStatus(tasks, "in_progress")],
-    ["blocked", countTasksWithStatus(tasks, "blocked")],
-    ["done", countTasksWithStatus(tasks, "done")],
-    ["canceled", countTasksWithStatus(tasks, "canceled")],
+    [labels.todo, countTasksWithStatus(tasks, "todo")],
+    [labels.in_progress, countTasksWithStatus(tasks, "in_progress")],
+    [labels.blocked, countTasksWithStatus(tasks, "blocked")],
+    [labels.done, countTasksWithStatus(tasks, "done")],
+    [labels.canceled, countTasksWithStatus(tasks, "canceled")],
   ];
   return counts
     .filter(([, count]) => count > 0)
@@ -241,33 +245,33 @@ function countTasksWithStatus(tasks: Array<Record<string, unknown>>, status: str
 }
 
 function formatListTaskStatus(value: unknown): string {
-  return value === "in_progress" ? "run" : String(value);
+  const statuses = piTasksMessages().compact.statuses;
+  return value === "in_progress" ? statuses.in_progress : String(value);
 }
 
 function formatTaskCount(count: number): string {
-  if (count === 0) return "aucune tâche";
-  if (count === 1) return "1 tâche";
-  return `${count} tâches`;
+  return formatCount(piTasksMessages().compact.taskCount, count);
 }
 
 function formatDeletedTaskList(result: Record<string, unknown>): string {
   const list = result.list as Record<string, unknown>;
   const deletedTasks = result.deleted_tasks as unknown[];
-  return `✓ Liste supprimée: ${truncateOneLine(String(list.name), LIST_NAME_DISPLAY_MAX_CHARS)} · ${String(list.visibility)} · ${formatDeletedTaskCount(deletedTasks.length)}`;
+  const ui = piTasksMessages().compact;
+  return `${ui.listDeleted} ${truncateOneLine(String(list.name), LIST_NAME_DISPLAY_MAX_CHARS)} · ${String(list.visibility)} · ${formatDeletedTaskCount(deletedTasks.length)}`;
 }
 
 function formatDeletedTaskCount(count: number): string {
-  if (count === 0) return "aucune tâche active";
-  if (count === 1) return "1 tâche supprimée";
-  return `${count} tâches supprimées`;
+  return formatCount(piTasksMessages().compact.deletedTaskCount, count);
 }
 
 function formatCreatedTask(task: Record<string, unknown>): string {
-  return [`✓ Tâche créée: ${formatTaskReferenceWithDescription(task)}`, `  status: ${String(task.status)} · id: ${shortId(task.id)}`].join("\n");
+  const ui = piTasksMessages().compact;
+  return [`${ui.taskCreated} ${formatTaskReferenceWithDescription(task)}`, `  ${ui.fields.status}: ${String(task.status)} · ${ui.fields.id}: ${shortId(task.id)}`].join("\n");
 }
 
 function formatDeletedTask(task: Record<string, unknown>): string {
-  return [`✓ Tâche supprimée: ${formatTaskReference(task)}`, `  status: ${String(task.status)} · id: ${shortId(task.id)}`].join("\n");
+  const ui = piTasksMessages().compact;
+  return [`${ui.taskDeleted} ${formatTaskReference(task)}`, `  ${ui.fields.status}: ${String(task.status)} · ${ui.fields.id}: ${shortId(task.id)}`].join("\n");
 }
 
 function formatReorderedTasks(tasks: unknown[]): string {
@@ -276,14 +280,14 @@ function formatReorderedTasks(tasks: unknown[]): string {
     id: shortId(task.id),
     title: normalizeOneLine(String(task.title)),
   }));
-  if (rows.length === 0) return "Aucune tâche réordonnée.";
+  const ui = piTasksMessages().compact;
+  if (rows.length === 0) return ui.noTasksReordered;
 
-  const plural = rows.length > 1;
   const positionWidth = Math.max("#".length, ...rows.map((row) => row.position.length));
-  const idWidth = Math.max("ID".length, ...rows.map((row) => row.id.length));
+  const idWidth = Math.max(ui.headers.id.length, ...rows.map((row) => row.id.length));
   return [
-    `✓ ${rows.length} tâche${plural ? "s" : ""} réordonnée${plural ? "s" : ""}`,
-    `  ${"#".padStart(positionWidth)}  ${"ID".padEnd(idWidth)}  TITLE`,
+    formatPlural(ui.tasksReordered, rows.length),
+    `  ${"#".padStart(positionWidth)}  ${ui.headers.id.padEnd(idWidth)}  ${ui.headers.title}`,
     ...rows.map((row) => formatReorderedTaskRow(row, { positionWidth, idWidth })),
   ].join("\n");
 }
@@ -294,42 +298,31 @@ function formatReorderedTaskRow(row: { position: string; id: string; title: stri
 }
 
 function formatAllHelp(): string {
-  return [
-    "pi-tasks help",
-    "• workflow: claim_next, notes, outcome, private access",
-    "• schemas: task_lists, task_items, task_claims, task_audit, task_help",
-    "• examples: find, create, add_many, claim_next, update",
-    "Use task_help workflow|schemas|examples for a focused section.",
-  ].join("\n");
+  return piTasksMessages().compact.help.all.join("\n");
 }
 
 function formatWorkflowHelp(): string {
-  return [
-    "pi-tasks workflow",
-    "1. Trouver/créer une liste: task_lists find/create",
-    "2. Ajouter des tâches: task_items create/add_many",
-    "3. Démarrer une tâche: task_claims claim_next",
-    "4. Écrire la mémoire locale: task_items update notes",
-    "5. Terminer: task_items update status=done + outcome",
-  ].join("\n");
+  return piTasksMessages().compact.help.workflow.join("\n");
 }
 
 function formatSchemaHelp(): string {
+  const ui = piTasksMessages().compact.help;
   return [
-    "pi-tasks schemas",
+    ui.schemasTitle,
     `• task_lists: ${TASK_LIST_ACTIONS.join(", ")}`,
     `• task_items: ${TASK_ITEM_ACTIONS.join(", ")}`,
     `• task_claims: ${TASK_CLAIM_ACTIONS.join(", ")}`,
     `• task_audit: ${TASK_AUDIT_ACTIONS.join(", ")}`,
     `• task_help: ${TASK_HELP_ACTIONS.join(", ")}`,
-    "Expand for full params.",
+    ui.expandForFullParams,
   ].join("\n");
 }
 
 function formatExamplesHelp(result: Record<string, unknown>): string {
   const examples = Array.isArray(result.examples) ? result.examples.filter(isRecord) : [];
-  if (examples.length === 0) return "pi-tasks examples\nAucun exemple disponible.";
-  return ["pi-tasks examples", ...examples.map(formatExampleLine)].join("\n");
+  const ui = piTasksMessages().compact.help;
+  if (examples.length === 0) return `${ui.examplesTitle}\n${ui.noExamples}`;
+  return [ui.examplesTitle, ...examples.map(formatExampleLine)].join("\n");
 }
 
 function formatExampleLine(example: Record<string, unknown>, index: number): string {
@@ -339,42 +332,45 @@ function formatExampleLine(example: Record<string, unknown>, index: number): str
 }
 
 function formatClaimNext(result: Record<string, unknown>): string {
-  if (!isRecord(result.task)) return "Aucune tâche disponible à claimer.";
+  const ui = piTasksMessages().compact;
+  if (!isRecord(result.task)) return ui.noTaskToClaim;
   const task = result.task;
   return [
-    `▶ Tâche claimée: ${formatTaskReference(task)}`,
-    `  status: ${String(task.status)} · expires: ${formatExpiry(task.claim_expires_at)} · id: ${shortId(task.id)}`,
+    `${ui.taskClaimed} ${formatTaskReference(task)}`,
+    `  ${ui.fields.status}: ${String(task.status)} · ${ui.fields.expires}: ${formatExpiry(task.claim_expires_at)} · ${ui.fields.id}: ${shortId(task.id)}`,
   ].join("\n");
 }
 
 function formatRefreshedClaim(task: Record<string, unknown>): string {
+  const ui = piTasksMessages().compact;
   return [
-    `✓ Claim rafraîchi: ${formatTaskReference(task)}`,
-    `  status: ${String(task.status)} · expires: ${formatExpiry(task.claim_expires_at)} · id: ${shortId(task.id)}`,
+    `${ui.claimRefreshed} ${formatTaskReference(task)}`,
+    `  ${ui.fields.status}: ${String(task.status)} · ${ui.fields.expires}: ${formatExpiry(task.claim_expires_at)} · ${ui.fields.id}: ${shortId(task.id)}`,
   ].join("\n");
 }
 
 function formatReleasedExpiredClaims(result: Record<string, unknown>): string {
   const released = Array.isArray(result.released) ? result.released.filter(isRecord) : [];
-  if (released.length === 0) return "Aucun claim expiré à libérer.";
+  const ui = piTasksMessages().compact;
+  if (released.length === 0) return ui.noExpiredClaims;
 
-  const plural = released.length > 1;
   return [
-    `✓ ${released.length} claim${plural ? "s" : ""} expiré${plural ? "s" : ""} libéré${plural ? "s" : ""}`,
-    ...released.map((task) => `• ${formatTaskReference(task)} · id: ${shortId(task.id)}`),
+    formatPlural(ui.expiredClaimsReleased, released.length),
+    ...released.map((task) => `• ${formatTaskReference(task)} · ${ui.fields.id}: ${shortId(task.id)}`),
   ].join("\n");
 }
 
 function formatUpdatedTask(task: Record<string, unknown>): string {
   const status = String(task.status);
+  const ui = piTasksMessages().compact;
   const prefixByStatus: Record<string, string> = {
-    blocked: "⏸ Tâche bloquée",
-    canceled: "✕ Tâche annulée",
-    done: "✓ Tâche terminée",
+    blocked: ui.taskUpdated.blocked,
+    canceled: ui.taskUpdated.canceled,
+    done: ui.taskUpdated.done,
   };
-  const lines = [`${prefixByStatus[status] ?? "✓ Tâche mise à jour"}: ${formatTaskReference(task)}`, `  status: ${status} · id: ${shortId(task.id)}`];
-  if (typeof task.notes === "string" && task.notes.trim().length > 0) lines.push(`  notes: ${truncateOneLine(task.notes, TASK_TEXT_DISPLAY_MAX_CHARS)}`);
-  if (typeof task.outcome === "string" && task.outcome.trim().length > 0) lines.push(`  outcome: ${truncateOneLine(task.outcome, TASK_TEXT_DISPLAY_MAX_CHARS)}`);
+  const lines = [`${prefixByStatus[status] ?? ui.taskUpdated.default}: ${formatTaskReference(task)}`, `  ${ui.fields.status}: ${status} · ${ui.fields.id}: ${shortId(task.id)}`];
+  if (typeof task.notes === "string" && task.notes.trim().length > 0) lines.push(`  ${ui.fields.notes}: ${truncateOneLine(task.notes, TASK_TEXT_DISPLAY_MAX_CHARS)}`);
+  if (typeof task.outcome === "string" && task.outcome.trim().length > 0) lines.push(`  ${ui.fields.outcome}: ${truncateOneLine(task.outcome, TASK_TEXT_DISPLAY_MAX_CHARS)}`);
   return lines.join("\n");
 }
 
@@ -390,10 +386,11 @@ function formatTaskReferenceWithDescription(task: Record<string, unknown>): stri
 }
 
 function formatExpiry(value: unknown): string {
-  if (typeof value !== "string") return "?";
+  const values = piTasksMessages().compact.values;
+  if (typeof value !== "string") return values.unknown;
   const ms = Date.parse(value) - Date.now();
-  if (!Number.isFinite(ms)) return "?";
-  if (ms <= 0) return "expired";
+  if (!Number.isFinite(ms)) return values.unknown;
+  if (ms <= 0) return values.expired;
   const minutes = Math.ceil(ms / 60_000);
   if (minutes < 60) return `~${minutes}m`;
   return `~${Math.round(minutes / 60)}h`;
@@ -404,8 +401,7 @@ function shortId(value: unknown): string {
 }
 
 function formatAddedTasks(tasks: unknown[]): string {
-  const plural = tasks.length > 1;
-  const lines = [`✓ ${tasks.length} tâche${plural ? "s" : ""} ajoutée${plural ? "s" : ""}`];
+  const lines = [formatPlural(piTasksMessages().compact.tasksAdded, tasks.length)];
   for (const item of tasks) {
     if (isRecord(item)) lines.push(formatAddedTaskLine(item));
   }
@@ -424,15 +420,15 @@ function formatAuditEvents(events: unknown[]): string {
     tool: truncateOneLine(String(event.tool_name), 24),
     reason: typeof event.reason === "string" ? truncateOneLine(event.reason, TASK_TEXT_DISPLAY_MAX_CHARS) : "",
   }));
-  if (rows.length === 0) return "Private access audit\nAucun événement visible.";
+  const ui = piTasksMessages().compact;
+  if (rows.length === 0) return `${ui.audit.title}\n${ui.audit.noEvents}`;
 
-  const plural = rows.length > 1;
-  const listWidth = Math.max("LIST".length, ...rows.map((row) => row.list.length));
-  const actorWidth = Math.max("ACTOR".length, ...rows.map((row) => row.actor.length));
-  const toolWidth = Math.max("TOOL".length, ...rows.map((row) => row.tool.length));
+  const listWidth = Math.max(ui.headers.list.length, ...rows.map((row) => row.list.length));
+  const actorWidth = Math.max(ui.headers.actor.length, ...rows.map((row) => row.actor.length));
+  const toolWidth = Math.max(ui.headers.tool.length, ...rows.map((row) => row.tool.length));
   return [
-    `Private access audit · ${rows.length} événement${plural ? "s" : ""}`,
-    `  TIME                  ${"LIST".padEnd(listWidth)}  ${"ACTOR".padEnd(actorWidth)}  ${"TOOL".padEnd(toolWidth)}`,
+    `${ui.audit.title} · ${formatPlural(ui.audit.events, rows.length)}`,
+    `  ${ui.headers.time.padEnd(20)}  ${ui.headers.list.padEnd(listWidth)}  ${ui.headers.actor.padEnd(actorWidth)}  ${ui.headers.tool.padEnd(toolWidth)}`,
     ...rows.flatMap((row) => formatAuditEventLines(row, { listWidth, actorWidth, toolWidth })),
   ].join("\n");
 }
@@ -442,13 +438,14 @@ function formatAuditEventLines(
   widths: { listWidth: number; actorWidth: number; toolWidth: number },
 ): string[] {
   const line = `• ${row.time.padEnd(20)}  ${row.list.padEnd(widths.listWidth)}  ${row.actor.padEnd(widths.actorWidth)}  ${row.tool.padEnd(widths.toolWidth)}`;
-  return row.reason.length > 0 ? [line, `  reason: ${row.reason}`] : [line];
+  return row.reason.length > 0 ? [line, `  ${piTasksMessages().compact.fields.reason}: ${row.reason}`] : [line];
 }
 
 function formatAuditTime(value: unknown): string {
-  if (typeof value !== "string") return "?";
+  const unknown = piTasksMessages().compact.values.unknown;
+  if (typeof value !== "string") return unknown;
   const ms = Date.parse(value);
-  if (!Number.isFinite(ms)) return "?";
+  if (!Number.isFinite(ms)) return unknown;
   return new Date(ms).toISOString().replace("T", " ").slice(0, 19) + "Z";
 }
 

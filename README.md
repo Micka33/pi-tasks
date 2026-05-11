@@ -145,13 +145,42 @@ Useful commands:
 /task-audit [list_id]  # readable private-list bypass audit events visible to this agent
 /task-audit [list_id] full # complete JSON audit events
 /task-list-delete <list_id> # soft-delete a list and all active tasks in it
+/task-language en|fr  # change Pi UI language for this session
 ```
 
-`/tasks <list_id>`, `/task-audit <list_id>`, and `/task-list-delete <list_id>` support Pi TUI autocomplete for visible task-list ids. Type `/tasks ` then trigger completion, or start typing a list id/name to filter suggestions. `/task-widget` also autocompletes its actions: `on`, `off`, `compact`, `full`, `refresh`.
+`/tasks <list_id>`, `/task-audit <list_id>`, and `/task-list-delete <list_id>` support Pi TUI autocomplete for visible task-list ids. Type `/tasks ` then trigger completion, or start typing a list id/name to filter suggestions. `/task-widget` autocompletes its actions: `on`, `off`, `compact`, `full`, `refresh`. `/task-language` autocompletes supported UI languages: `en`, `fr`, `de`, `es`, `it`, `pl`, `ru`, `jp`, `cn`.
 
 The widget refreshes on session start, after `task_*` tool calls, and periodically every 10 seconds to catch updates made by other agents or MCP clients.
 
 Pi currently renders at most 10 widget lines. `pi-tasks` stays under that limit itself to avoid Pi's generic `widget truncated` message: compact mode uses up to 8 lines, full mode uses up to 10 lines, and hidden content is summarized with explicit `… masquée(s)` lines plus `/tasks <list_id>` hints.
+
+## Pi UI language
+
+Human-facing Pi UI text is localized. Supported locales are `en`, `fr`, `de`, `es`, `it`, `pl`, `ru`, `jp`, and `cn`.
+
+Change it for the current Pi session with autocomplete:
+
+```text
+/task-language fr
+/task-language en
+/task-language de
+/task-language es
+/task-language it
+/task-language pl
+/task-language ru
+/task-language jp
+/task-language cn
+```
+
+You can also choose a startup default with:
+
+```bash
+export PI_TASKS_LANG=fr
+# or
+export PI_TASKS_LANG=en
+```
+
+If `PI_TASKS_LANG` is unset, `pi-tasks` tries `LC_ALL`, `LC_MESSAGES`, then `LANG`, and falls back to `en`. The `/task-language` command overrides that fallback for the current process/session. Use `/task-widget refresh` after changing language to redraw the widget; command/tool labels already registered by Pi may require `/reload`. Tool names, action names, JSON fields, status values, IDs, and structured tool results stay stable and are not translated.
 
 ## Tools
 

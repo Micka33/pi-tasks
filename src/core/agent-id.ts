@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { hostname } from "node:os";
+import { piTasksMessages } from "../i18n/index.js";
 import type { ActorContext } from "./types.js";
 
 export function shortHash(value: string): string {
@@ -22,8 +23,7 @@ export function resolvePiAgentId(sessionManager?: SessionLike): ActorContext & {
   return {
     agentId: `pi-ephemeral:${shortHash(`${hostname()}:${process.pid}:${Date.now()}`)}`,
     source: "pi",
-    warning:
-      "Pi session file unavailable; using an ephemeral agent id. Use a persisted Pi session or PI_TASKS_AGENT_ID for stable ownership.",
+    warning: piTasksMessages().agentId.piEphemeralWarning,
   };
 }
 
@@ -34,7 +34,6 @@ export function resolveMcpAgentId(): ActorContext & { warning?: string } {
   return {
     agentId: `mcp-process:${shortHash(`${hostname()}:${process.pid}`)}`,
     source: "mcp",
-    warning:
-      "PI_TASKS_AGENT_ID is not set; using a process-scoped MCP agent id. Set PI_TASKS_AGENT_ID for stable claims and private-list ownership.",
+    warning: piTasksMessages().agentId.mcpProcessWarning,
   };
 }
