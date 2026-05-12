@@ -320,8 +320,65 @@ test("formatDashboard covers empty, hidden, long, duration, and status variants"
   assert.equal(compact.some((line) => line.includes("canceled 1")), true);
   assert.equal(compact.some((line) => line.includes("liste(s) masquée(s)")), true);
 
-  const manyMineOneList = dashboardFromLists(agentId, [{ list: listA, tasks: rich.lists[0]!.tasks }]);
+  const manyMineOneList = dashboardFromLists(agentId, [
+    {
+      list: listA,
+      tasks: [
+        widgetTask({ id: "many-mine-todo", list_id: listA.id, title: "Many mine todo", status: "todo", assigned_to_agent_id: agentId }),
+        widgetTask({ id: "many-mine-blocked", list_id: listA.id, position: 2, title: "Many mine blocked", status: "blocked", assigned_to_agent_id: agentId }),
+        widgetTask({ id: "many-mine-done", list_id: listA.id, position: 3, title: "Many mine done", status: "done", assigned_to_agent_id: agentId }),
+      ],
+    },
+  ]);
   assert.equal(formatDashboard(manyMineOneList, "compact").some((line) => line.includes("autre(s) tâche(s) à moi")), true);
+
+  const noRunningManyLists = dashboardFromLists(
+    agentId,
+    Array.from({ length: 5 }, (_, index) => ({
+      list: widgetList(`todo-list-${index}`, `Todo List ${index}`),
+      tasks: [widgetTask({ id: `todo-task-${index}`, list_id: `todo-list-${index}`, title: `Todo task ${index}`, status: "todo" })],
+    })),
+  );
+  assert.equal(formatDashboard(noRunningManyLists, "compact").some((line) => line.includes("liste(s) masquée(s)")), true);
+
+  const runningBeforeLists = dashboardFromLists(agentId, [
+    {
+      list: listA,
+      tasks: [
+        widgetTask({ id: "running-a", list_id: listA.id, title: "Run A", status: "in_progress", claimed_by_agent_id: agentId, claim_expires_at: futureHours }),
+        widgetTask({ id: "todo-a", list_id: listA.id, position: 2, title: "Todo A", status: "todo" }),
+      ],
+    },
+    { list: listB, tasks: [widgetTask({ id: "running-b", list_id: listB.id, title: "Run B", status: "in_progress", claimed_by_agent_id: agentId, claim_expires_at: futureHours })] },
+    { list: listC, tasks: [widgetTask({ id: "todo-c", list_id: listC.id, title: "Todo C", status: "todo" })] },
+  ]);
+  const runningBeforeListsLines = formatDashboard(runningBeforeLists, "compact");
+  assert.equal(runningBeforeListsLines.some((line) => line.includes("Run A")), true);
+  assert.equal(runningBeforeListsLines.some((line) => line.includes("Run B")), true);
+  assert.equal(runningBeforeListsLines.some((line) => line.includes("liste(s) masquée(s)")), true);
+
+  const fourRunningWithLists = dashboardFromLists(
+    agentId,
+    Array.from({ length: 4 }, (_, index) => ({
+      list: widgetList(`four-run-list-${index}`, `Four Run List ${index}`),
+      tasks: [widgetTask({ id: `four-run-${index}`, list_id: `four-run-list-${index}`, title: `Four run ${index}`, status: "in_progress", claimed_by_agent_id: agentId, claim_expires_at: futureHours })],
+    })),
+  );
+  const fourRunningWithListsLines = formatDashboard(fourRunningWithLists, "compact");
+  assert.equal(fourRunningWithListsLines.filter((line) => line.includes("Four run ")).length, 4);
+  assert.equal(fourRunningWithListsLines.some((line) => line.includes("liste(s) masquée(s)")), true);
+
+  const manyRunning = dashboardFromLists(
+    agentId,
+    Array.from({ length: 7 }, (_, index) => ({
+      list: widgetList(`run-list-${index}`, `Run List ${index}`),
+      tasks: [widgetTask({ id: `many-run-${index}`, list_id: `run-list-${index}`, title: `Many run ${index}`, status: "in_progress", claimed_by_agent_id: agentId, claim_expires_at: futureHours })],
+    })),
+  );
+  const manyRunningLines = formatDashboard(manyRunning, "compact");
+  assert.equal(manyRunningLines.filter((line) => line.includes("Many run ")).length, 4);
+  assert.equal(manyRunningLines.some((line) => line.includes("run tâches masquée(s)") && line.includes("liste(s) masquée(s)")), true);
+
   const full = formatDashboard(rich, "full");
   assert.equal(full.some((line) => line.includes("verrou expire dans 30s")), true);
   const hourClaim = dashboardFromLists("claim-agent", [

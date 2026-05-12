@@ -236,42 +236,84 @@ function escapeRegExp(value: string): string {
 function buildCompactEntries(dashboard: DashboardData): FrameEntry[] {
   const budget = COMPACT_WIDGET_LINES - 2;
   const entries: FrameEntry[] = [];
+  const runningTasks = prioritizedRunningTasks(dashboard);
   const myTasks = prioritizedMyTasks(dashboard);
   const lists = prioritizedLists(dashboard);
   const ui = piTasksMessages().widget;
 
   entries.push(line(`${ui.sections.mine} · ${formatMineCounts(dashboard.myCounts)}`));
 
-  const reserveForLists = compactListReserve(lists.length, budget);
-  const maxMyTasks = Math.min(myTasks.length, 2, Math.max(0, budget - reserveForLists - entries.length));
-  for (const item of myTasks.slice(0, maxMyTasks)) {
-    entries.push(line(formatTaskLine(item.task, item.list, { agentId: dashboard.agentId, includeListName: true, mySection: true, indent: "  " })));
+  if (runningTasks.length > 0) {
+    const availableAfterSummary = budget - entries.length;
+    if (runningTasks.length >= availableAfterSummary) {
+      const maxRunningTasks = availableAfterSummary - 1;
+      for (const item of runningTasks.slice(0, maxRunningTasks)) {
+        entries.push(line(formatRunningTaskLine(item, dashboard.agentId)));
+      }
+      addCompactOmissionLine(entries, budget, runningTasks.length - maxRunningTasks, lists.length);
+      return entries;
+    }
+
+    for (const item of runningTasks) {
+      entries.push(line(formatRunningTaskLine(item, dashboard.agentId)));
+    }
+  } else {
+    const reserveForLists = compactListReserve(lists.length, budget);
+    const maxMyTasks = Math.min(myTasks.length, 2, Math.max(0, budget - reserveForLists - entries.length));
+    for (const item of myTasks.slice(0, maxMyTasks)) {
+      entries.push(line(formatTaskLine(item.task, item.list, { agentId: dashboard.agentId, includeListName: true, mySection: true, indent: "  " })));
+    }
+
+    const hiddenMyTasks = myTasks.length - maxMyTasks;
+    if (hiddenMyTasks > 0 && entries.length < budget - reserveForLists) {
+      entries.push(line(`  … ${hiddenMyTasks} ${ui.hidden.otherMineTasks}`));
+    }
   }
 
-  const hiddenMyTasks = myTasks.length - maxMyTasks;
-  if (hiddenMyTasks > 0 && entries.length < budget - reserveForLists) {
-    entries.push(line(`  … ${hiddenMyTasks} ${ui.hidden.otherMineTasks}`));
-  }
+  appendCompactListSummaries(entries, budget, lists);
+  return entries;
+}
 
+function appendCompactListSummaries(entries: FrameEntry[], budget: number, lists: DashboardList[]): void {
+  const ui = piTasksMessages().widget;
   if (lists.length === 0) {
     if (entries.length < budget) entries.push(line(ui.empty.noVisibleTasks));
-    return entries;
+    return;
   }
 
-  if (entries.length < budget) entries.push(separator(ui.sections.lists));
+  const remaining = budget - entries.length;
+  if (remaining === 1) {
+    entries.push(line(formatHiddenListsLine(lists.length)));
+    return;
+  }
 
+  entries.push(separator(ui.sections.lists));
   const listSlots = budget - entries.length;
-  const listLimit = lists.length > listSlots ? Math.max(0, listSlots - 1) : listSlots;
+  const listLimit = lists.length > listSlots ? listSlots - 1 : listSlots;
   for (const item of lists.slice(0, listLimit)) {
     entries.push(line(formatListSummary(item)));
   }
 
   const hiddenLists = lists.length - listLimit;
-  if (hiddenLists > 0 && entries.length < budget) {
-    entries.push(line(`… ${hiddenLists} ${ui.hidden.lists} · /task-lists`));
-  }
+  if (hiddenLists > 0) entries.push(line(formatHiddenListsLine(hiddenLists)));
+}
 
-  return entries;
+function addCompactOmissionLine(entries: FrameEntry[], budget: number, hiddenRunningTasks: number, hiddenLists: number): void {
+  addOmissionLine(entries, budget, `… ${formatHiddenRunningTasks(hiddenRunningTasks)} · ${formatHiddenLists(hiddenLists)} · /tasks <list_id>`);
+}
+
+function formatHiddenRunningTasks(count: number): string {
+  const ui = piTasksMessages().widget;
+  return `${count} ${ui.counts.run} ${pluralWord(ui.title.task, count)} ${ui.hidden.summarySuffix}`;
+}
+
+function formatHiddenLists(count: number): string {
+  const ui = piTasksMessages().widget;
+  return `${count} ${ui.hidden.lists}`;
+}
+
+function formatHiddenListsLine(count: number): string {
+  return `… ${formatHiddenLists(count)} · /task-lists`;
 }
 
 function compactListReserve(listCount: number, budget: number): number {
@@ -346,6 +388,23 @@ function buildFullEntries(dashboard: DashboardData): FrameEntry[] {
   return entries;
 }
 
+function prioritizedRunningTasks(dashboard: DashboardData): DashboardTask[] {
+  const runningTasks: DashboardTask[] = [];
+  for (const list of dashboard.lists) {
+    for (const task of list.tasks) {
+      if (task.status !== "in_progress") continue;
+      runningTasks.push({
+        task,
+        list: list.list,
+        assignedToAgent: task.assigned_to_agent_id === dashboard.agentId,
+        claimedByAgent: task.claimed_by_agent_id === dashboard.agentId,
+      });
+    }
+  }
+
+  return runningTasks.sort((a, b) => compareTaskOwnership(b.task, a.task, dashboard.agentId) || compareTasksForDisplay(a.task, b.task) || a.list.name.localeCompare(b.list.name));
+}
+
 function prioritizedMyTasks(dashboard: DashboardData): DashboardTask[] {
   return [...dashboard.myTasks].sort((a, b) => compareTasksForDisplay(a.task, b.task) || a.list.name.localeCompare(b.list.name));
 }
@@ -391,6 +450,10 @@ function statusPriority(status: TaskStatus): number {
 
 function isMine(task: Task, agentId: string): boolean {
   return task.claimed_by_agent_id === agentId || task.assigned_to_agent_id === agentId;
+}
+
+function formatRunningTaskLine(item: DashboardTask, agentId: string): string {
+  return formatTaskLine(item.task, item.list, { agentId, includeListName: true, mySection: false, indent: "  " });
 }
 
 function line(text: string): FrameEntry {
