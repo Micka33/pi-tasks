@@ -6,14 +6,21 @@
   "private": false,
   "keywords": [
     "pi-package",
+    "pi-extension",
     "pi",
     "mcp",
     "tasks",
-    "agents"
+    "agents",
+    "task-management",
+    "multi-agent",
+    "coordination",
+    "sqlite"
   ],
   "files": [
     "bin/pi-tasks-mcp.js",
     "dist",
+    "docs/pi-tasks-preview.png",
+    "pi-tasks.md",
     "README.md"
   ],
   "bin": {
@@ -53,7 +60,8 @@
   "pi": {
     "extensions": [
       "./dist/src/pi/index.js"
-    ]
+    ],
+    "image": "https://raw.githubusercontent.com/Micka33/pi-tasks/main/docs/pi-tasks-preview.png"
   },
   "repository": {
     "type": "git",

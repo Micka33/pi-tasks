@@ -2,6 +2,8 @@
 
 Persistent, ordered, shared task lists for Pi agents and MCP clients.
 
+![pi-tasks package preview](./docs/pi-tasks-preview.png)
+
 `pi-tasks` ships both:
 
 1. a **Pi package/extension** exposing task tools directly inside Pi;
@@ -34,7 +36,7 @@ Releases are also mirrored to GitHub Packages so they appear on the repository P
 From this repository instead of npm:
 
 ```bash
-pi install git:git@github.com:Micka33/pi-tasks.git@v0.0.1
+pi install git:git@github.com:Micka33/pi-tasks.git@latest
 ```
 
 During development:
