@@ -208,7 +208,7 @@ export const fr = {
     markers: {
       mine: "mine",
       paused: "paused",
-      claim: "claim",
+      claim: "verrou expire dans",
       duration: "duration",
     },
     statusLine: {

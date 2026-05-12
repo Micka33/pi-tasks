@@ -2,14 +2,14 @@
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#09111f"/>
-      <stop offset="0.5" stop-color="#111827"/>
+      <stop offset="0.52" stop-color="#111827"/>
       <stop offset="1" stop-color="#020617"/>
     </linearGradient>
-    <radialGradient id="glowA" cx="0.12" cy="0.08" r="0.7">
-      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.38"/>
+    <radialGradient id="cyan" cx="0.08" cy="0.05" r="0.72">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.34"/>
       <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="glowB" cx="0.86" cy="0.86" r="0.65">
+    <radialGradient id="violet" cx="0.88" cy="0.9" r="0.68">
       <stop offset="0" stop-color="#a78bfa" stop-opacity="0.34"/>
       <stop offset="1" stop-color="#a78bfa" stop-opacity="0"/>
     </radialGradient>
@@ -18,20 +18,19 @@
     </filter>
     <style>
       .mono { font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; }
-      .sans { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+      .sans { font-family: Arial, Helvetica, sans-serif; }
     </style>
   </defs>
 
   <rect width="1200" height="630" fill="url(#bg)"/>
-  <rect width="1200" height="630" fill="url(#glowA)"/>
-  <rect width="1200" height="630" fill="url(#glowB)"/>
-  <circle cx="1060" cy="105" r="118" fill="#22d3ee" opacity="0.08"/>
-  <circle cx="158" cy="540" r="168" fill="#a78bfa" opacity="0.07"/>
+  <rect width="1200" height="630" fill="url(#cyan)"/>
+  <rect width="1200" height="630" fill="url(#violet)"/>
+  <circle cx="1050" cy="540" r="230" fill="#a78bfa" opacity="0.09"/>
 
-  <g transform="translate(72 70)">
-    <rect x="0" y="0" width="1056" height="490" rx="34" fill="#0f172a" opacity="0.88" filter="url(#shadow)"/>
-    <rect x="1.5" y="1.5" width="1053" height="487" rx="32" fill="none" stroke="#334155" stroke-width="3"/>
-    <rect x="28" y="28" width="1000" height="434" rx="24" fill="#020617" opacity="0.72"/>
+  <g transform="translate(72 64)">
+    <rect x="0" y="0" width="1056" height="506" rx="34" fill="#0f172a" opacity="0.9" filter="url(#shadow)"/>
+    <rect x="1.5" y="1.5" width="1053" height="503" rx="32" fill="none" stroke="#334155" stroke-width="3"/>
+    <rect x="28" y="28" width="1000" height="450" rx="24" fill="#020617" opacity="0.74"/>
 
     <g transform="translate(58 56)">
       <circle cx="12" cy="12" r="8" fill="#fb7185"/>
@@ -40,32 +39,35 @@
       <text class="mono" x="500" y="18" font-size="21" text-anchor="middle" fill="#94a3b8">pi package · npm:@micka33/pi-tasks</text>
     </g>
 
-    <g transform="translate(72 120)">
-      <text class="sans" x="0" y="0" font-size="68" font-weight="800" fill="#f8fafc">pi-tasks</text>
-      <text class="sans" x="4" y="48" font-size="26" fill="#cbd5e1">Persistent shared task lists for Pi agents and MCP clients</text>
+    <text class="sans" x="72" y="166" font-size="64" font-weight="800" fill="#f8fafc">pi-tasks</text>
+    <text class="sans" x="76" y="206" font-size="25" fill="#cbd5e1">Persistent shared task lists for Pi agents and MCP clients</text>
 
-      <g transform="translate(0 88)">
-        <rect x="0" y="0" width="912" height="250" rx="18" fill="#0b1220" stroke="#1e293b" stroke-width="2"/>
-        <rect x="0" y="0" width="912" height="52" rx="18" fill="#111827"/>
-        <path d="M0 34 Q0 0 18 0 H894 Q912 0 912 18 V52 H0 Z" fill="#111827"/>
-        <text class="mono" x="24" y="34" font-size="22" fill="#38bdf8">pi-tasks · shared queue</text>
-        <text class="mono" x="594" y="34" font-size="20" fill="#94a3b8">todo 2 · run 1 · done 3</text>
+    <g transform="translate(72 246)">
+      <rect x="0" y="0" width="912" height="230" rx="18" fill="#0b1220" stroke="#1e293b" stroke-width="2"/>
+      <rect x="0" y="0" width="912" height="48" rx="18" fill="#111827"/>
+      <path d="M0 28 Q0 0 18 0 H894 Q912 0 912 18 V48 H0 Z" fill="#111827"/>
+      <text class="mono" x="24" y="31" font-size="21" fill="#38bdf8">pi-tasks · 2 lists · 6 tasks</text>
+      <text class="mono" x="520" y="31" font-size="17" fill="#94a3b8">todo 3 · run 1 · paused 1 · done 1</text>
 
-        <g class="mono" font-size="24">
-          <text x="28" y="94" fill="#f8fafc">▶ #1 Prepare context</text>
-          <text x="620" y="94" fill="#67e8f9">claimed</text>
-          <text x="28" y="142" fill="#e2e8f0">□ #2 Execute treatment</text>
-          <text x="620" y="142" fill="#fbbf24">next</text>
-          <text x="28" y="190" fill="#e2e8f0">✓ #3 Verify result</text>
-          <text x="620" y="190" fill="#34d399">done</text>
-          <text x="28" y="232" fill="#94a3b8" font-size="21">tools: task_lists · task_items · task_claims · task_audit</text>
-        </g>
+      <g transform="translate(24 70)">
+        <text class="mono" x="0" y="0" font-size="19" fill="#38bdf8">Release prep</text>
+        <text class="mono" x="176" y="0" font-size="18" fill="#94a3b8">2 tasks</text>
+        <text class="mono" x="0" y="38" font-size="23" fill="#f8fafc">▶ Package gallery</text>
+        <text class="mono" x="332" y="38" font-size="21" fill="#67e8f9">claimed</text>
+        <text class="mono" x="0" y="76" font-size="23" fill="#e2e8f0">□ Validate npm metadata</text>
+        <text class="mono" x="332" y="76" font-size="21" fill="#fbbf24">next</text>
       </g>
-    </g>
 
-    <g transform="translate(836 392)">
-      <rect x="0" y="0" width="160" height="44" rx="22" fill="#22d3ee" opacity="0.18" stroke="#22d3ee" stroke-width="1.5"/>
-      <text class="mono" x="80" y="29" font-size="18" text-anchor="middle" fill="#a5f3fc">Pi extension</text>
+      <line x1="460" y1="66" x2="460" y2="204" stroke="#1e293b" stroke-width="2"/>
+
+      <g transform="translate(494 70)">
+        <text class="mono" x="0" y="0" font-size="19" fill="#38bdf8">QA handoff</text>
+        <text class="mono" x="140" y="0" font-size="18" fill="#94a3b8">4 tasks</text>
+        <text class="mono" x="0" y="34" font-size="20" fill="#34d399">✓ Build preview</text>
+        <text class="mono" x="0" y="66" font-size="20" fill="#fbbf24">■ Improve widget layout</text>
+        <text class="mono" x="0" y="98" font-size="20" fill="#e2e8f0">□ Add focused tests</text>
+        <text class="mono" x="0" y="130" font-size="20" fill="#e2e8f0">□ Publish after approval</text>
+      </g>
     </g>
   </g>
 </svg>

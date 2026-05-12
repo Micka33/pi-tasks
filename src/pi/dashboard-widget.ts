@@ -1,4 +1,4 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import type { AutocompleteItem } from "@earendil-works/pi-tui";
 import { resolvePiAgentId } from "../core/agent-id.js";
 import { buildDashboard, type DashboardData, type DashboardList, type DashboardTask, type StatusCounts } from "../core/dashboard.js";
@@ -149,7 +149,7 @@ function refreshWidget(ctx: ExtensionContext, options: { notify?: boolean } = {}
         return;
       }
 
-      ctx.ui.setWidget(WIDGET_KEY, formatDashboard(dashboard, state.mode), { placement: "aboveEditor" });
+      ctx.ui.setWidget(WIDGET_KEY, colorizeDashboardLines(formatDashboard(dashboard, state.mode), ctx.ui.theme), { placement: "aboveEditor" });
       ctx.ui.setStatus(WIDGET_KEY, formatStatus(dashboard));
       if (options.notify) ctx.ui.notify(`${notifications.refreshedPrefix} (${state.mode})`, "info");
     } finally {
@@ -178,35 +178,87 @@ export function formatDashboard(dashboard: DashboardData, mode: WidgetMode): str
   const title = `pi-tasks · ${shortenAgentId(dashboard.agentId)} · ${plural(dashboard.lists.length, ui.title.list)} · ${plural(dashboard.totalActiveTasks, ui.title.task)}`;
   const maxLines = mode === "full" ? FULL_WIDGET_LINES : COMPACT_WIDGET_LINES;
   const entries = mode === "full" ? buildFullEntries(dashboard) : buildCompactEntries(dashboard);
-  const footer = mode === "full" ? ui.footer.compact : ui.footer.full;
+  const switchCommand = mode === "full" ? ui.footer.compact : ui.footer.full;
+  const footer = `mode ${mode} · ${switchCommand}`;
 
   return frameEntries(title, entries, footer, maxLines);
+}
+
+export function colorizeDashboardLines(lines: string[], theme: Theme): string[] {
+  const ui = piTasksMessages().widget;
+  const metadataStyles: Array<[string, (value: string) => string]> = [
+    [`${escapeRegExp(ui.counts.run)} \\d+`, (value) => theme.fg("accent", value)],
+    [`${escapeRegExp(ui.markers.claim)} \\S+`, (value) => theme.fg("accent", value)],
+    [`${escapeRegExp(ui.counts.todo)} \\d+`, (value) => theme.fg("muted", value)],
+    [`${escapeRegExp(ui.counts.blocked)} \\d+`, (value) => theme.fg("warning", value)],
+    [`${escapeRegExp(ui.counts.paused)} \\d+`, (value) => theme.fg("warning", value)],
+    [escapeRegExp(ui.markers.paused), (value) => theme.fg("warning", value)],
+    [`${escapeRegExp(ui.counts.done)} \\d+`, (value) => theme.fg("success", value)],
+    [`${escapeRegExp(ui.counts.canceled)} \\d+`, (value) => theme.fg("error", value)],
+  ];
+  const glyphStyles: Array<[RegExp, (value: string) => string]> = [
+    [/▶/gu, (value) => theme.fg("accent", value)],
+    [/○/gu, (value) => theme.fg("dim", value)],
+    [/■/gu, (value) => theme.fg("warning", value)],
+    [/✓/gu, (value) => theme.fg("success", value)],
+    [/×/gu, (value) => theme.fg("error", value)],
+  ];
+
+  return lines.map((lineText, index) => {
+    let colored = index === 0 ? lineText.replace("pi-tasks", theme.fg("accent", theme.bold("pi-tasks"))) : lineText;
+
+    for (const [pattern, style] of metadataStyles) {
+      colored = colorizeDelimitedMetadata(colored, pattern, style);
+    }
+
+    for (const [pattern, style] of glyphStyles) {
+      colored = colored.replace(pattern, style);
+    }
+
+    colored = colored
+      .replace(/mode (?:compact|full)/gu, (value) => theme.fg("dim", value))
+      .replace(/\/task-widget(?: (?:on|off|compact|full|refresh))?|\/task-lists|\/tasks <list_id>/gu, (value) => theme.fg("dim", value))
+      .replace(/[╭╮╰╯├┤│─]+/gu, (value) => theme.fg("borderMuted", value));
+
+    return colored;
+  });
+}
+
+function colorizeDelimitedMetadata(lineText: string, metadataPattern: string, style: (value: string) => string): string {
+  const pattern = new RegExp(`(^| · |│\\s*)(${metadataPattern})(?= · |\\s*│|$)`, "gu");
+  return lineText.replace(pattern, (_match, prefix: string, value: string) => `${prefix}${style(value)}`);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function buildCompactEntries(dashboard: DashboardData): FrameEntry[] {
   const budget = COMPACT_WIDGET_LINES - 2;
   const entries: FrameEntry[] = [];
   const myTasks = prioritizedMyTasks(dashboard);
+  const lists = prioritizedLists(dashboard);
   const ui = piTasksMessages().widget;
 
   entries.push(line(`${ui.sections.mine} · ${formatMineCounts(dashboard.myCounts)}`));
 
-  const maxMyTasks = Math.min(myTasks.length, 2);
+  const reserveForLists = compactListReserve(lists.length, budget);
+  const maxMyTasks = Math.min(myTasks.length, 2, Math.max(0, budget - reserveForLists - entries.length));
   for (const item of myTasks.slice(0, maxMyTasks)) {
     entries.push(line(formatTaskLine(item.task, item.list, { agentId: dashboard.agentId, includeListName: true, mySection: true, indent: "  " })));
   }
+
   const hiddenMyTasks = myTasks.length - maxMyTasks;
-  if (hiddenMyTasks > 0 && entries.length < budget - 2) {
+  if (hiddenMyTasks > 0 && entries.length < budget - reserveForLists) {
     entries.push(line(`  … ${hiddenMyTasks} ${ui.hidden.otherMineTasks}`));
   }
 
-  if (entries.length < budget) entries.push(separator(ui.sections.lists));
-
-  const lists = prioritizedLists(dashboard);
   if (lists.length === 0) {
     if (entries.length < budget) entries.push(line(ui.empty.noVisibleTasks));
     return entries;
   }
+
+  if (entries.length < budget) entries.push(separator(ui.sections.lists));
 
   const listSlots = budget - entries.length;
   const listLimit = lists.length > listSlots ? Math.max(0, listSlots - 1) : listSlots;
@@ -222,6 +274,14 @@ function buildCompactEntries(dashboard: DashboardData): FrameEntry[] {
   return entries;
 }
 
+function compactListReserve(listCount: number, budget: number): number {
+  if (listCount === 0) return 0;
+  const sectionLine = 1;
+  const visibleLists = Math.min(listCount, 2);
+  const hiddenLine = listCount > visibleLists ? 1 : 0;
+  return Math.min(budget - 1, sectionLine + visibleLists + hiddenLine);
+}
+
 function buildFullEntries(dashboard: DashboardData): FrameEntry[] {
   const budget = FULL_WIDGET_LINES - 2;
   const entries: FrameEntry[] = [];
@@ -230,7 +290,10 @@ function buildFullEntries(dashboard: DashboardData): FrameEntry[] {
 
   entries.push(line(`${ui.sections.mine} · ${formatMineCounts(dashboard.myCounts)}`));
 
-  const maxMyTasks = Math.min(myTasks.length, 2);
+  const lists = prioritizedLists(dashboard);
+  const reserveForListHeaders = Math.min(lists.length, 2);
+  const myTaskLimit = lists.length > 1 ? 1 : 2;
+  const maxMyTasks = Math.min(myTasks.length, myTaskLimit, Math.max(0, budget - reserveForListHeaders - entries.length));
   for (const item of myTasks.slice(0, maxMyTasks)) {
     entries.push(line(formatTaskLine(item.task, item.list, { agentId: dashboard.agentId, includeListName: true, mySection: true, indent: "  " })));
   }
@@ -239,7 +302,6 @@ function buildFullEntries(dashboard: DashboardData): FrameEntry[] {
     entries.push(line(`  … ${hiddenMyTasks} ${ui.hidden.otherMineTasks}`));
   }
 
-  const lists = prioritizedLists(dashboard);
   if (lists.length === 0) {
     if (entries.length < budget) entries.push(line(ui.empty.noVisibleTasks));
     return entries;
@@ -344,7 +406,9 @@ function addOmissionLine(entries: FrameEntry[], budget: number, text: string): v
     entries.push(line(text));
     return;
   }
-  if (budget > 0) entries[budget - 1] = line(text);
+
+  const replaceIndex = Math.max(0, entries.slice(0, budget).findLastIndex((entry) => entry.kind === "line"));
+  entries[replaceIndex] = line(text);
 }
 
 function frameEntries(title: string, entries: FrameEntry[], footer: string, maxLines: number): string[] {

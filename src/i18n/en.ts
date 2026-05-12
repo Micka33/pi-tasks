@@ -204,7 +204,7 @@ export const en = {
     markers: {
       mine: "mine",
       paused: "paused",
-      claim: "claim",
+      claim: "lock expires in",
       duration: "duration",
     },
     statusLine: {

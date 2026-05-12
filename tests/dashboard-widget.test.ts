@@ -7,7 +7,7 @@ import { shortHash } from "../src/core/agent-id.js";
 import { buildDashboard, emptyCounts, type DashboardData } from "../src/core/dashboard.js";
 import { TaskService } from "../src/core/service.js";
 import type { AccessOptions, Task, TaskList, TaskStatus } from "../src/core/types.js";
-import { formatDashboard, getTaskWidgetArgumentCompletions, registerPiTasksDashboardWidget, terminalDisplayWidth } from "../src/pi/dashboard-widget.js";
+import { colorizeDashboardLines, formatDashboard, getTaskWidgetArgumentCompletions, registerPiTasksDashboardWidget, terminalDisplayWidth } from "../src/pi/dashboard-widget.js";
 
 process.env.PI_TASKS_LANG = "fr";
 
@@ -21,6 +21,11 @@ function tmpCwd(): { cwd: string; cleanup: () => void } {
   return { cwd, cleanup: () => rmSync(cwd, { recursive: true, force: true }) };
 }
 
+const fakeTheme = {
+  fg: (color: string, value: string) => `\u001B[${color}m${value}\u001B[0m`,
+  bold: (value: string) => `\u001B[boldm${value}\u001B[0m`,
+} as any;
+
 function mockWidgetContext(cwd: string, options: { hasUI?: boolean; sessionFile?: string; sessionManager?: unknown } = {}) {
   const widgets: Array<{ key: string; value: string[] | undefined; options?: unknown }> = [];
   const statuses: Array<{ key: string; value: string | undefined }> = [];
@@ -31,6 +36,7 @@ function mockWidgetContext(cwd: string, options: { hasUI?: boolean; sessionFile?
       hasUI: options.hasUI ?? true,
       sessionManager: options.sessionManager ?? { getSessionFile: () => options.sessionFile ?? join(cwd, "session.json") },
       ui: {
+        theme: fakeTheme,
         setWidget(key: string, value: string[] | undefined, widgetOptions?: unknown) {
           widgets.push({ key, value, options: widgetOptions });
         },
@@ -135,6 +141,32 @@ test("widget display width accounts for CJK and zero-width marks", () => {
   assert.equal(terminalDisplayWidth("日本"), 4);
   assert.equal(terminalDisplayWidth("e\u0301"), 1);
   assert.equal(terminalDisplayWidth("x\uFE0F"), 1);
+});
+
+test("colorizeDashboardLines styles borders, labels, status glyphs, counts, and commands", () => {
+  const colored = colorizeDashboardLines(
+    [
+      "╭ pi-tasks · mine · lists ─╮",
+      "│ ▶ run 1 · verrou expire dans 2h · ○ todo 2 · ■ blocked 1 · paused 1 · ✓ done 1 · × canceled 1 │",
+      "│ Amélioration widget pi-tasks · todo 5 │",
+      "│ task to run 10 blocked stuff done · no tasks │",
+      "│ ■ Blocked task · paused │",
+      "│ canceled 1 │",
+      "╰ mode compact · /task-widget full · /tasks <list_id> · /task-lists ╯",
+    ],
+    fakeTheme,
+  );
+
+  assert.equal(colored.some((line) => line.includes("\u001B[borderMutedm╭")), true);
+  assert.equal(colored.join("\n").match(/\u001B\[accentm\u001B\[boldmpi-tasks/g)?.length, 1);
+  assert.equal(colored.join("\n").includes("task to run 10 blocked stuff done"), true);
+  assert.equal(colored.join("\n").includes("task to \u001B[accentmrun 10"), false);
+  assert.equal(colored.some((line) => line.includes("\u001B[successm✓")), true);
+  assert.equal(colored.some((line) => line.includes("\u001B[errorm×")), true);
+  assert.equal(colored.some((line) => line.includes("\u001B[errormcanceled 1")), true);
+  assert.equal(colored.some((line) => line.includes("\u001B[warningmpaused")), true);
+  assert.equal(colored.some((line) => line.includes("\u001B[dimmmode compact")), true);
+  assert.equal(colored.some((line) => line.includes("\u001B[dimm/task-widget full")), true);
 });
 
 test("formatDashboard aligns framed borders with Japanese and Chinese wide characters", () => {
@@ -284,16 +316,18 @@ test("formatDashboard covers empty, hidden, long, duration, and status variants"
   ]);
   const compact = formatDashboard(rich, "compact");
   assert.equal(compact.some((line) => line.includes("very-long-agent…")), true);
-  assert.equal(compact.some((line) => line.includes("autre(s) tâche(s) à moi")), true);
   assert.equal(compact.some((line) => line.includes("done 1")), true);
   assert.equal(compact.some((line) => line.includes("canceled 1")), true);
   assert.equal(compact.some((line) => line.includes("liste(s) masquée(s)")), true);
+
+  const manyMineOneList = dashboardFromLists(agentId, [{ list: listA, tasks: rich.lists[0]!.tasks }]);
+  assert.equal(formatDashboard(manyMineOneList, "compact").some((line) => line.includes("autre(s) tâche(s) à moi")), true);
   const full = formatDashboard(rich, "full");
-  assert.equal(full.some((line) => line.includes("claim 30s")), true);
+  assert.equal(full.some((line) => line.includes("verrou expire dans 30s")), true);
   const hourClaim = dashboardFromLists("claim-agent", [
     { list: widgetList("claims", "Claims"), tasks: [widgetTask({ id: "hour-claim", list_id: "claims", title: "Hour claim", status: "in_progress", claim_expires_at: futureHours })] },
   ]);
-  assert.equal(formatDashboard(hourClaim, "full").some((line) => line.includes("claim 2h")), true);
+  assert.equal(formatDashboard(hourClaim, "full").some((line) => line.includes("verrou expire dans 2h")), true);
 
   const originalDateNow = Date.now;
   Date.now = () => Date.parse("2026-01-01T00:00:00.000Z");
@@ -304,7 +338,7 @@ test("formatDashboard covers empty, hidden, long, duration, and status variants"
         tasks: [widgetTask({ id: "exact-hour-claim", list_id: "exact-claim", title: "Exact hour claim", status: "in_progress", claim_expires_at: "2026-01-01T02:00:00.000Z" })],
       },
     ]);
-    assert.equal(formatDashboard(exactHourClaim, "full").some((line) => line.includes("Exact hour claim") && line.includes("claim 2h")), true);
+    assert.equal(formatDashboard(exactHourClaim, "full").some((line) => line.includes("Exact hour claim") && line.includes("verrou expire dans 2h")), true);
   } finally {
     Date.now = originalDateNow;
   }
@@ -337,7 +371,7 @@ test("formatDashboard covers empty, hidden, long, duration, and status variants"
   const invalidLines = formatDashboard(invalidDurations, "full");
   assert.equal(invalidLines.some((line) => line.includes("duration ?")), true);
   assert.equal(invalidLines.some((line) => line.includes("duration 2h")), true);
-  assert.equal(invalidLines.some((line) => line.includes("claim not-a-date")), true);
+  assert.equal(invalidLines.some((line) => line.includes("verrou expire dans not-a-date")), true);
 
   const claimTimes = dashboardFromLists("claim-agent", [
     {
@@ -349,8 +383,8 @@ test("formatDashboard covers empty, hidden, long, duration, and status variants"
     },
   ]);
   const claimLines = formatDashboard(claimTimes, "full");
-  assert.equal(claimLines.some((line) => line.includes("claim 1m")), true);
-  assert.equal(claimLines.some((line) => line.includes("claim -1m")), true);
+  assert.equal(claimLines.some((line) => line.includes("verrou expire dans 1m")), true);
+  assert.equal(claimLines.some((line) => line.includes("verrou expire dans -1m")), true);
 
   const exactMinuteDuration = dashboardFromLists("duration-agent", [
     {
@@ -424,14 +458,13 @@ test("dashboard widget is framed and stays under Pi's 10-line widget limit", () 
           { title: "préparer les fichiers" },
           { title: "exécuter les tests" },
           { title: "documenter le résultat" },
+          { title: "publier après validation" },
         ],
       },
       a,
     );
     const running = service.claimNextTask({ list_id: "example-list-2" }, a).task;
     assert.ok(running);
-
-    service.createTaskList({ id: "empty-list", name: "Empty list", scope_type: "workspace", scope_key: "/repo", visibility: "shared" }, a);
 
     const dashboard = buildDashboard(service, a, { includeDone: true });
     const compact = formatDashboard(dashboard, "compact");
@@ -440,8 +473,10 @@ test("dashboard widget is framed and stays under Pi's 10-line widget limit", () 
     assertFramedWidget(compact, 8);
     assertFramedWidget(full, 10);
     assert.ok(compact.some((line) => line.includes("moi · run 1 · todo 0 · paused 1")));
-    assert.ok(compact.some((line) => line.includes("├─ listes")));
-    assert.ok(full.some((line) => line.includes("Example list 2 · todo 2 · run 1 · blocked 0 · done 0")));
+    assert.ok(compact.some((line) => line.includes("Example list 1 · todo 0 · run 0 · blocked 1 · done 1")));
+    assert.ok(compact.some((line) => line.includes("Example list 2 · todo 3 · run 1 · blocked 0 · done 0")));
+    assert.ok(full.some((line) => line.includes("Example list 1 · todo 0 · run 0 · blocked 1 · done 1")));
+    assert.ok(full.some((line) => line.includes("Example list 2 · todo 3 · run 1 · blocked 0 · done 0")));
     assert.ok(full.some((line) => line.includes("paused")));
 
     service.close();
