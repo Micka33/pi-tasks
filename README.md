@@ -4,10 +4,11 @@ Persistent, ordered, shared task lists for Pi agents and MCP clients.
 
 ![pi-tasks package preview](./docs/pi-tasks-preview.png)
 
-`pi-tasks` ships both:
+`pi-tasks` ships:
 
 1. a **Pi package/extension** exposing task tools directly inside Pi;
-2. a **local stdio MCP server** exposing the same tool surface to MCP hosts.
+2. a **Pi skill** explaining when and how to use the task tools;
+3. a **local stdio MCP server** exposing the same tool surface to MCP hosts.
 
 The product specification is kept in [`pi-tasks.md`](./pi-tasks.md).
 

@@ -7,6 +7,7 @@
   "keywords": [
     "pi-package",
     "pi-extension",
+    "pi-skill",
     "pi",
     "mcp",
     "tasks",
@@ -21,7 +22,8 @@
     "dist",
     "docs/pi-tasks-preview.png",
     "pi-tasks.md",
-    "README.md"
+    "README.md",
+    "skills"
   ],
   "bin": {
     "pi-tasks-mcp": "bin/pi-tasks-mcp.js"
@@ -60,6 +62,9 @@
   "pi": {
     "extensions": [
       "./dist/src/pi/index.js"
+    ],
+    "skills": [
+      "./skills"
     ],
     "image": "https://raw.githubusercontent.com/Micka33/pi-tasks/main/docs/pi-tasks-preview.png"
   },
