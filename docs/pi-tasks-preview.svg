@@ -42,32 +42,24 @@
     <text class="sans" x="72" y="166" font-size="64" font-weight="800" fill="#f8fafc">pi-tasks</text>
     <text class="sans" x="76" y="206" font-size="25" fill="#cbd5e1">Persistent shared task lists for Pi agents and MCP clients</text>
 
-    <g transform="translate(72 246)">
-      <rect x="0" y="0" width="912" height="230" rx="18" fill="#0b1220" stroke="#1e293b" stroke-width="2"/>
+    <g transform="translate(72 240)">
+      <rect x="0" y="0" width="912" height="244" rx="18" fill="#0b1220" stroke="#1e293b" stroke-width="2"/>
       <rect x="0" y="0" width="912" height="48" rx="18" fill="#111827"/>
       <path d="M0 28 Q0 0 18 0 H894 Q912 0 912 18 V48 H0 Z" fill="#111827"/>
-      <text class="mono" x="24" y="31" font-size="21" fill="#38bdf8">pi-tasks · 2 lists · 6 tasks</text>
-      <text class="mono" x="520" y="31" font-size="17" fill="#94a3b8">todo 3 · run 1 · paused 1 · done 1</text>
+      <text class="mono" x="24" y="32" font-size="20" fill="#38bdf8">pi-tasks · pi:af65cf12 · 3 lists · 8 tasks</text>
 
-      <g transform="translate(24 70)">
-        <text class="mono" x="0" y="0" font-size="19" fill="#38bdf8">Release prep</text>
-        <text class="mono" x="176" y="0" font-size="18" fill="#94a3b8">2 tasks</text>
-        <text class="mono" x="0" y="38" font-size="23" fill="#f8fafc">▶ Package gallery</text>
-        <text class="mono" x="332" y="38" font-size="21" fill="#67e8f9">claimed</text>
-        <text class="mono" x="0" y="76" font-size="23" fill="#e2e8f0">□ Validate npm metadata</text>
-        <text class="mono" x="332" y="76" font-size="21" fill="#fbbf24">next</text>
-      </g>
+      <text class="mono" x="24" y="90" font-size="19" fill="#e2e8f0">mine · </text>
+      <text class="mono" x="104" y="90" font-size="19" fill="#67e8f9">run 2</text>
+      <text class="mono" x="176" y="90" font-size="19" fill="#e2e8f0"> · </text>
+      <text class="mono" x="212" y="90" font-size="19" fill="#94a3b8">todo 0</text>
+      <text class="mono" x="286" y="90" font-size="19" fill="#e2e8f0"> · </text>
+      <text class="mono" x="322" y="90" font-size="19" fill="#fbbf24">paused 0</text>
 
-      <line x1="460" y1="66" x2="460" y2="204" stroke="#1e293b" stroke-width="2"/>
-
-      <g transform="translate(494 70)">
-        <text class="mono" x="0" y="0" font-size="19" fill="#38bdf8">QA handoff</text>
-        <text class="mono" x="140" y="0" font-size="18" fill="#94a3b8">4 tasks</text>
-        <text class="mono" x="0" y="34" font-size="20" fill="#34d399">✓ Build preview</text>
-        <text class="mono" x="0" y="66" font-size="20" fill="#fbbf24">■ Improve widget layout</text>
-        <text class="mono" x="0" y="98" font-size="20" fill="#e2e8f0">□ Add focused tests</text>
-        <text class="mono" x="0" y="130" font-size="20" fill="#e2e8f0">□ Publish after approval</text>
-      </g>
+      <text class="mono" x="24" y="128" font-size="20" fill="#67e8f9">▶ task to run 10 blocked stuff done · lock expires in 1h58m · Preview</text>
+      <text class="mono" x="24" y="166" font-size="20" fill="#67e8f9">▶ Finaliser l'aperçu de la galerie Pi · lock expires in 1h32m · Preview</text>
+      <line x1="0" y1="184" x2="912" y2="184" stroke="#334155" stroke-width="1.5"/>
+      <text class="mono" x="24" y="224" font-size="20" fill="#94a3b8">… 3 lists hidden · /task-lists</text>
+      <text class="mono" x="24" y="250" font-size="18" fill="#94a3b8">mode compact · /task-widget full · /tasks &lt;list_id&gt;</text>
     </g>
   </g>
 </svg>
