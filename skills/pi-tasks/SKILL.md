@@ -1,6 +1,10 @@
 ---
 name: pi-tasks
-description: Use when work should be tracked in persistent shared pi-tasks lists: multi-step plans, resumable work, handoffs, parallel agents, task claiming, task status updates, or when the user asks to create, list, claim, update, or close tasks. Explains when and how to use the pi-tasks extension tools.
+description: >-
+  Use when work should be tracked in persistent shared pi-tasks lists: multi-step
+  plans, resumable work, handoffs, parallel agents, task claiming, task status
+  updates, or when the user asks to create, list, claim, update, or close tasks.
+  Explains when and how to use the pi-tasks extension tools.
 ---
 
 # pi-tasks
