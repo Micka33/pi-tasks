@@ -17,7 +17,10 @@ import {
   type DeleteTaskInput,
   type DeleteTaskListInput,
   type DeleteTaskListResult,
+  type EnsureTaskListInput,
   type FindTaskListsInput,
+  type FindTasksInput,
+  type GetTaskInput,
   type GetTaskListInput,
   type PrivateAccessEvent,
   type PrivateAccessEventsGetInput,
@@ -31,6 +34,7 @@ import {
   type TaskListWithTasks,
   type TaskStatus,
   type UpdateTaskInput,
+  type UpsertTaskInput,
   type Visibility,
 } from "./types.js";
 
@@ -82,6 +86,65 @@ export class TaskService {
         .run(id, input.name.trim(), input.scope_type, input.scope_key.trim(), visibility, ownerAgentId, access.actor.agentId, now, now);
 
       return this.getTaskListRow(id, { includeDeleted: true });
+    });
+  }
+
+  ensureTaskList(input: EnsureTaskListInput, access: AccessOptions): TaskList {
+    const visibility = input.visibility ?? "shared";
+    validateScopeType(input.scope_type);
+    validateVisibility(visibility);
+    validateRequiredString(input.name, "name");
+    validateRequiredString(input.scope_key, "scope_key");
+
+    const ownerAgentId = input.owner_agent_id === undefined ? (visibility === "private" ? access.actor.agentId : null) : input.owner_agent_id;
+    const requestedId = input.id?.trim();
+
+    return withImmediateTransaction(this.db, () => {
+      const existing = requestedId
+        ? this.getOptionalTaskListRow(requestedId)
+        : this.findTaskListByNaturalKey({
+            name: input.name.trim(),
+            scopeType: input.scope_type,
+            scopeKey: input.scope_key.trim(),
+            visibility,
+            ownerAgentId,
+          });
+
+      if (!existing) {
+        const id = requestedId || randomUUID();
+        const now = this.nowIso();
+        this.db
+          .prepare(
+            `INSERT INTO task_lists
+              (id, name, scope_type, scope_key, visibility, owner_agent_id, created_by_agent_id, created_at, updated_at, deleted_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+          )
+          .run(id, input.name.trim(), input.scope_type, input.scope_key.trim(), visibility, ownerAgentId, access.actor.agentId, now, now);
+        return this.getTaskListRow(id, { includeDeleted: true });
+      }
+
+      this.assertListAccess(existing, access);
+      if (existing.deleted_at && input.revive_deleted === false) throw new NotFoundError("task_list", existing.id);
+
+      const sets: string[] = [];
+      const params: SQLInputValue[] = [];
+
+      if (input.update_existing) {
+        sets.push("name = ?", "scope_type = ?", "scope_key = ?", "visibility = ?", "owner_agent_id = ?");
+        params.push(input.name.trim(), input.scope_type, input.scope_key.trim(), visibility, ownerAgentId);
+      }
+      if (existing.deleted_at && (input.revive_deleted ?? true)) {
+        sets.push("deleted_at = NULL");
+      }
+
+      if (sets.length > 0) {
+        const now = this.nowIso();
+        sets.push("updated_at = ?");
+        params.push(now, existing.id);
+        this.db.prepare(`UPDATE task_lists SET ${sets.join(", ")} WHERE id = ?`).run(...params);
+      }
+
+      return this.getTaskListRow(existing.id, { includeDeleted: true });
     });
   }
 
@@ -147,6 +210,72 @@ export class TaskService {
       includeDeleted: input.include_deleted,
     });
     return { list, tasks };
+  }
+
+  getTask(input: GetTaskInput, access: AccessOptions): Task {
+    validateRequiredString(input.task_id, "task_id");
+    const task = this.getTaskRow(input.task_id);
+    if (task.deleted_at && !input.include_deleted) throw new NotFoundError("task", input.task_id);
+    this.getTaskListForAccess(task.list_id, access, { includeDeleted: input.include_deleted });
+    return task;
+  }
+
+  findTasks(input: FindTasksInput, access: AccessOptions): Task[] {
+    if (input.statuses !== undefined) {
+      for (const status of input.statuses) validateTaskStatus(status);
+    }
+
+    const conditions: string[] = [];
+    const params: SQLInputValue[] = [];
+
+    if (input.list_id !== undefined) {
+      this.getTaskListForAccess(input.list_id, access, { includeDeleted: input.include_deleted });
+      conditions.push("list_id = ?");
+      params.push(input.list_id);
+    } else {
+      const visibleLists = this.findTaskLists({ include_deleted: input.include_deleted }, access);
+      if (visibleLists.length === 0) return [];
+      conditions.push(`list_id IN (${visibleLists.map(() => "?").join(", ")})`);
+      params.push(...visibleLists.map((list) => list.id));
+    }
+
+    if (!input.include_deleted) conditions.push("deleted_at IS NULL");
+    if (input.task_id !== undefined) {
+      validateRequiredString(input.task_id, "task_id");
+      conditions.push("id = ?");
+      params.push(input.task_id.trim());
+    }
+    if (input.statuses !== undefined && input.statuses.length > 0) {
+      conditions.push(`status IN (${input.statuses.map(() => "?").join(", ")})`);
+      params.push(...input.statuses);
+    }
+    if (input.assigned_to_agent_id !== undefined) {
+      if (input.assigned_to_agent_id === null) conditions.push("assigned_to_agent_id IS NULL");
+      else {
+        conditions.push("assigned_to_agent_id = ?");
+        params.push(input.assigned_to_agent_id);
+      }
+    }
+    if (input.claimed_by_agent_id !== undefined) {
+      if (input.claimed_by_agent_id === null) conditions.push("claimed_by_agent_id IS NULL");
+      else {
+        conditions.push("claimed_by_agent_id = ?");
+        params.push(input.claimed_by_agent_id);
+      }
+    }
+    if (input.text !== undefined) {
+      validateRequiredString(input.text, "text");
+      const pattern = `%${input.text.trim()}%`;
+      conditions.push("(lower(title) LIKE lower(?) OR lower(COALESCE(description, '')) LIKE lower(?) OR lower(COALESCE(notes, '')) LIKE lower(?) OR lower(COALESCE(outcome, '')) LIKE lower(?))");
+      params.push(pattern, pattern, pattern, pattern);
+    }
+
+    const limit = normalizeLimit(input.limit, 100, 1000, "limit");
+    params.push(limit);
+    const rows = this.db
+      .prepare(`SELECT * FROM tasks WHERE ${conditions.join(" AND ")} ORDER BY list_id ASC, position ASC, created_at ASC LIMIT ?`)
+      .all(...params) as Row[];
+    return rows.map(rowToTask);
   }
 
   createTask(input: CreateTaskInput, access: AccessOptions): Task {
@@ -379,6 +508,131 @@ export class TaskService {
     });
   }
 
+  upsertTask(input: UpsertTaskInput, access: AccessOptions): Task {
+    validateRequiredString(input.id, "id");
+    validateRequiredString(input.list_id, "list_id");
+    validateRequiredString(input.title, "title");
+    const inputStatus = input.status as TaskStatus | undefined;
+    if (inputStatus !== undefined) {
+      validateTaskStatus(inputStatus);
+      if (inputStatus === "in_progress") {
+        throw new ValidationError("upsertTask cannot set status to in_progress; use claimNextTask instead", { task_id: input.id });
+      }
+    }
+
+    return withImmediateTransaction(this.db, () => {
+      this.getTaskListForAccess(input.list_id, access);
+      const now = this.nowIso();
+      const taskId = input.id.trim();
+      const existing = this.getOptionalTaskRow(taskId);
+      const requestedStatus = input.status as TaskStatus | undefined;
+      const normalizedOutcome = input.outcome === undefined ? undefined : normalizeNullableString(input.outcome);
+
+      if (!existing) {
+        const status = requestedStatus ?? "todo";
+        const finalOutcome = normalizedOutcome ?? null;
+        if ((status === "done" || status === "canceled") && !finalOutcome) {
+          throw new ValidationError("outcome is required when closing a task with status done or canceled", {
+            task_id: taskId,
+            status,
+          });
+        }
+        const position = this.nextPosition(input.list_id, input.position);
+        this.db
+          .prepare(
+            `INSERT INTO tasks
+              (id, list_id, position, title, description, notes, status, assigned_to_agent_id, claimed_by_agent_id,
+               claim_expires_at, outcome, created_at, updated_at, started_at, completed_at, deleted_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?, NULL, ?, NULL)`,
+          )
+          .run(
+            taskId,
+            input.list_id,
+            position,
+            input.title.trim(),
+            normalizeNullableString(input.description),
+            normalizeNullableString(input.notes),
+            status,
+            normalizeNullableString(input.assigned_to_agent_id),
+            finalOutcome,
+            now,
+            now,
+            status === "done" || status === "canceled" ? now : null,
+          );
+        return this.getTaskRow(taskId);
+      }
+
+      if (existing.list_id !== input.list_id) {
+        throw new ValidationError("upsertTask cannot move an existing task to another list", {
+          task_id: taskId,
+          current_list_id: existing.list_id,
+          requested_list_id: input.list_id,
+        });
+      }
+      if (existing.deleted_at && input.revive_deleted === false) throw new NotFoundError("task", taskId);
+
+      if (existing.claimed_by_agent_id && existing.claimed_by_agent_id !== access.actor.agentId) {
+        const protectedFields = input.status !== undefined || input.outcome !== undefined;
+        if (protectedFields) {
+          throw new ClaimConflictError("Cannot complete or change outcome for a task claimed by another agent", {
+            task_id: existing.id,
+            claimed_by_agent_id: existing.claimed_by_agent_id,
+            actor_agent_id: access.actor.agentId,
+          });
+        }
+      }
+
+      const finalStatus = requestedStatus ?? existing.status;
+      const finalOutcome = normalizedOutcome !== undefined ? normalizedOutcome : existing.outcome;
+      if ((finalStatus === "done" || finalStatus === "canceled") && !finalOutcome) {
+        throw new ValidationError("outcome is required when closing a task with status done or canceled", {
+          task_id: taskId,
+          status: finalStatus,
+        });
+      }
+
+      const sets: string[] = ["title = ?"];
+      const params: SQLInputValue[] = [input.title.trim()];
+
+      if (input.description !== undefined) {
+        sets.push("description = ?");
+        params.push(normalizeNullableString(input.description));
+      }
+      if (input.notes !== undefined) {
+        sets.push("notes = ?");
+        params.push(normalizeNullableString(input.notes));
+      }
+      if (input.assigned_to_agent_id !== undefined) {
+        sets.push("assigned_to_agent_id = ?");
+        params.push(normalizeNullableString(input.assigned_to_agent_id));
+      }
+      if (normalizedOutcome !== undefined) {
+        sets.push("outcome = ?");
+        params.push(normalizedOutcome);
+      }
+      if (requestedStatus !== undefined) {
+        sets.push("status = ?");
+        params.push(requestedStatus);
+        if (requestedStatus === "done" || requestedStatus === "canceled") {
+          sets.push("completed_at = COALESCE(completed_at, ?)", "claimed_by_agent_id = NULL", "claim_expires_at = NULL");
+          params.push(now);
+        } else if (requestedStatus === "blocked" || requestedStatus === "todo") {
+          sets.push("completed_at = NULL", "claimed_by_agent_id = NULL", "claim_expires_at = NULL");
+        }
+      }
+      if (existing.deleted_at && (input.revive_deleted ?? true)) {
+        const position = this.nextPosition(input.list_id, input.position);
+        sets.push("deleted_at = NULL", "position = ?");
+        params.push(position);
+      }
+
+      sets.push("updated_at = ?");
+      params.push(now, taskId);
+      this.db.prepare(`UPDATE tasks SET ${sets.join(", ")} WHERE id = ?`).run(...params);
+      return this.getTaskRow(taskId);
+    });
+  }
+
   reorderTasks(input: ReorderTasksInput, access: AccessOptions): Task[] {
     return withImmediateTransaction(this.db, () => {
       this.getTaskListForAccess(input.list_id, access);
@@ -554,10 +808,41 @@ export class TaskService {
     return list;
   }
 
+  private getOptionalTaskListRow(listId: string): TaskList | undefined {
+    const row = this.db.prepare("SELECT * FROM task_lists WHERE id = ?").get(listId) as Row | undefined;
+    return row ? rowToTaskList(row) : undefined;
+  }
+
+  private findTaskListByNaturalKey(input: {
+    name: string;
+    scopeType: ScopeType;
+    scopeKey: string;
+    visibility: Visibility;
+    ownerAgentId: string | null;
+  }): TaskList | undefined {
+    const ownerCondition = input.ownerAgentId === null ? "owner_agent_id IS NULL" : "owner_agent_id = ?";
+    const params: SQLInputValue[] = [input.name, input.scopeType, input.scopeKey, input.visibility];
+    if (input.ownerAgentId !== null) params.push(input.ownerAgentId);
+    const row = this.db
+      .prepare(
+        `SELECT * FROM task_lists
+         WHERE name = ? AND scope_type = ? AND scope_key = ? AND visibility = ? AND ${ownerCondition}
+         ORDER BY deleted_at IS NULL DESC, updated_at DESC, created_at DESC
+         LIMIT 1`,
+      )
+      .get(...params) as Row | undefined;
+    return row ? rowToTaskList(row) : undefined;
+  }
+
   private getTaskRow(taskId: string): Task {
     const row = this.db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId) as Row | undefined;
     if (!row) throw new NotFoundError("task", taskId);
     return rowToTask(row);
+  }
+
+  private getOptionalTaskRow(taskId: string): Task | undefined {
+    const row = this.db.prepare("SELECT * FROM tasks WHERE id = ?").get(taskId) as Row | undefined;
+    return row ? rowToTask(row) : undefined;
   }
 
   private getTasksForList(

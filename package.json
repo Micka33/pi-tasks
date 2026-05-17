@@ -3,6 +3,20 @@
   "version": "0.1.0",
   "description": "Persistent shared task lists for Pi agents and MCP clients.",
   "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./public": {
+      "types": "./dist/src/public/index.d.ts",
+      "import": "./dist/src/public/index.js"
+    },
+    "./package.json": "./package.json",
+    "./dist/*": "./dist/*"
+  },
   "private": false,
   "keywords": [
     "pi-package",

@@ -99,6 +99,11 @@ export interface GetTaskListInput {
   include_deleted?: boolean;
 }
 
+export interface EnsureTaskListInput extends CreateTaskListInput {
+  update_existing?: boolean;
+  revive_deleted?: boolean;
+}
+
 export interface CreateTaskInput {
   id?: string;
   list_id: string;
@@ -131,6 +136,22 @@ export interface RefreshClaimInput {
   claim_ttl_seconds?: number;
 }
 
+export interface GetTaskInput {
+  task_id: string;
+  include_deleted?: boolean;
+}
+
+export interface FindTasksInput {
+  list_id?: string;
+  task_id?: string;
+  statuses?: TaskStatus[];
+  assigned_to_agent_id?: string | null;
+  claimed_by_agent_id?: string | null;
+  text?: string;
+  include_deleted?: boolean;
+  limit?: number;
+}
+
 export interface UpdateTaskInput {
   task_id: string;
   title?: string;
@@ -139,6 +160,21 @@ export interface UpdateTaskInput {
   status?: TaskStatus;
   assigned_to_agent_id?: string | null;
   outcome?: string | null;
+}
+
+export type UpsertableTaskStatus = Exclude<TaskStatus, "in_progress">;
+
+export interface UpsertTaskInput {
+  id: string;
+  list_id: string;
+  title: string;
+  description?: string | null;
+  notes?: string | null;
+  status?: UpsertableTaskStatus;
+  assigned_to_agent_id?: string | null;
+  outcome?: string | null;
+  position?: number;
+  revive_deleted?: boolean;
 }
 
 export interface ReorderTasksInput {

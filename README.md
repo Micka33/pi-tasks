@@ -122,6 +122,47 @@ Example MCP config shape:
 }
 ```
 
+## Programmatic API
+
+The npm package exports a public code API from the package root:
+
+```ts
+import { PiTasks, type PiTasksOptions } from "@micka33/pi-tasks";
+```
+
+`PiTasksOptions` is documented in the emitted declaration file included in npm:
+
+```text
+dist/src/public/pi-tasks.d.ts
+```
+
+Constructor options:
+
+- `dbPath?: string` — absolute or cwd-relative SQLite database path. If omitted, `PI_TASKS_DB_PATH` is honored first, then pi-tasks uses `<cwd>/.pi/pi-tasks/tasks.sqlite`.
+- `cwd?: string` — base directory used when resolving the default database path or a relative `dbPath`. Defaults to `process.cwd()`.
+- `agentId?: string` — stable id for the calling agent/integration. If omitted, `PI_TASKS_AGENT_ID` is honored first, then a process-scoped fallback id is generated. Use a stable value when claims or private-list ownership must survive process restarts.
+- `source?: "pi" | "mcp" | "test" | "unknown"` — source label stored in access context and returned by `getAgentSummary()`. Defaults to `"unknown"` for the public code API.
+- `privateBypass?: { reason: string; toolName: string }` — optional default private-list bypass applied to calls from this instance. Prefer per-call bypasses when the confirmation is specific to one action.
+- `now?: () => Date` — clock override for deterministic tests or simulations.
+
+Example:
+
+```ts
+const tasks = new PiTasks({
+  cwd: repoRoot,
+  agentId: "parallel-main:abc123",
+  source: "unknown",
+});
+
+const list = tasks.ensureTaskList({
+  id: "parallel-agent-api-questions",
+  name: "parallel questions: api",
+  scope_type: "agent",
+  scope_key: "api",
+  visibility: "shared",
+});
+```
+
 ## Pi TUI widget
 
 The Pi extension shows a compact framed `pi-tasks` widget above the editor when visible task lists exist, including lists that currently contain no tasks.
