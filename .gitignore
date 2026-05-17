@@ -2,7 +2,6 @@ node_modules/
 dist/
 .DS_Store
 .env
-.pi/pi-tasks/*.sqlite
-.pi/pi-tasks/*.sqlite-*
+.pi
 coverage/
 *.log
